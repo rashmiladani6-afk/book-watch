@@ -201,8 +201,8 @@ const Header = ({ onSearch }: HeaderProps) => {
       {/* Mobile Search */}
       {showMobileSearch && (
         <div className="fixed inset-0 bg-white z-[60] flex flex-col">
-          <div className="border-b bg-white p-4">
-            <div className="flex items-center gap-3">
+          <div className="border-b bg-white p-10">
+            <div className="flex items-center gap-5">
               <form onSubmit={handleSearch} className="flex items-center gap-2 flex-1">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B5E3C]" />

@@ -5,12 +5,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import VerticalSidebar from "./components/VerticalSidebar";
-import Home from "./pages/Home";
+import Home from "./components/Home";
 import MovieDetail from "./pages/MovieDetail";
 import SeatSelection from "./pages/SeatSelection";
 import Auth from "./pages/Auth";
 import Payment from "./pages/Payment";
 import NotFound from "./pages/NotFound";
+import Header from "./components/Header";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
           <VerticalSidebar />
           <div className="md:ml-[72px]">
             <Routes>
+              {/* <Route path="/" element={<Header />}/> */}
               <Route path="/" element={<Home />} />
               <Route path="/movie/:id" element={<MovieDetail />} />
               <Route path="/book/:showId" element={<SeatSelection />} />
