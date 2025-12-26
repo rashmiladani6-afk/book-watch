@@ -3,7 +3,7 @@ import { movies as allMovies, ContentType } from "@/data/movies";
 
 import MovieCard from "@/components/MovieCard";
 import LiveEvents from "@/components/LiveEvents";
-import Premiere from "@/components/Premiere";
+// import Premiere from "@/components/Premiere";
 import { Premeiere } from "@/data/Premiere";
 
 import { musicStudioData } from "@/data/MusicStudio";
