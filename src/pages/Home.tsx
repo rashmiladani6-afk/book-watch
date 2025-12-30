@@ -13,14 +13,91 @@ import { PopularEventsData } from "@/data/PopularEvents";
 import { LatestPlaysData } from "@/data/LatestPlays"
 import { TopGames_SportsEventsData } from "@/data/TopGames_SportsEvents"
 import { FunACtivitiesData } from "@/data/FunActivities"
- 
+
 import Header from "@/components/Header";
 import TimerCarousel from "@/components/TimerCarousel";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronLeft, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronLeft, ChevronDown, Briefcase, Film, Trophy, Music, Search } from "lucide-react";
 import { Facebook, Twitter, Instagram, Youtube } from "lucide-react";
 
 import playButton from "../assest/image/play button/Watch new moives at home, ever Friday (3).png";
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/* 📂 ESSENTIAL EVENTS DATA (Specific Items)                                 */
+/* -------------------------------------------------------------------------- */
+const essentialEvents = [
+  {
+    id: 'avatar',
+    listTitle: 'Avatar: The Way of Water',
+    listDesc: 'Sci-Fi • 3h 12m',
+    heroTitle: 'Avatar: The Way of Water',
+    heroSubtitle: 'Set more than a decade after the events of the first film, learn the story of the Sully family and the trouble that follows them.',
+    buttonText: 'Book Now',
+    color: 'bg-[#0B5394]', // Ocean Blue
+    textColor: 'text-white',
+    tags: ['UA', 'Sci-Fi', 'IMAX'],
+    image: 'https://assets-in.bmscdn.com/discovery-catalog/events/tr:w-400,h-600,bg-CCCCCC:w-400.0,h-660.0,cm-pad_resize,bg-000000,fo-top:l-image,i-discovery-catalog@@icons@@star-icon-202203010609.png,lx-24,ly-615,w-29,l-end:l-text,ie-OC44LzEwICAxLjZLKyBWb3Rlcw%3D%3D,fs-29,co-FFFFFF,ly-612,lx-70,pa-8_0_0_0,l-end:l-text,ie-UFJPTU9URUQ%3D,co-FFFFFF,bg-DC354B,ff-Roboto,fs-20,lx-N16,ly-12,lfo-top_right,pa-12_14_12_14,r-6,l-end/et00443704-njctmveaay-portrait.jpg',
+    icon: <Film size={24} />,
+    category: 'movie'
+  },
+  {
+    id: 'dune',
+    listTitle: 'Dune: Part Two',
+    listDesc: 'Sci-Fi • 2h 46m',
+    heroTitle: 'Dune: Part Two',
+    heroSubtitle: 'Paul Atreides unites with Chani and the Fremen while on a warpath of revenge.',
+    buttonText: 'Book Now',
+    color: 'bg-[#C19A6B]', // Sand/Gold
+    textColor: 'text-white',
+    tags: ['UA', 'Sci-Fi', 'Blockbuster'],
+    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-Q3wmpqxNyP8TXdlT4WSsCsPj15Dak_IEIQ&s',
+    icon: <Film size={24} />,
+    category: 'movie'
+  },
+  {
+    id: 'ipl',
+    listTitle: 'IPL 2025: MI vs CSK',
+    listDesc: 'Cricket • Wankhede Stadium',
+    heroTitle: 'MI vs CSK - El Clasico',
+    heroSubtitle: 'The biggest rivalry in cricket history returns. Don\'t miss the action live.',
+    buttonText: 'Book Now',
+    color: 'bg-[#004BA0]', // MI Blue
+    textColor: 'text-white',
+    tags: ['Sports', 'Cricket', 'Live'],
+    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQdc4sZ7IWMPOHIIjNDpVx7eZMQCkiRkjAitg&s',
+    icon: <Trophy size={24} />,
+    category: 'event'
+  },
+  {
+    id: 'coldplay',
+    listTitle: 'Coldplay: MOTS',
+    listDesc: 'Concert • DY Patil Stadium',
+    heroTitle: 'Coldplay: Music of the Spheres',
+    heroSubtitle: 'Experience the magical world tour live in Mumbai. A spectacle of lights and music.',
+    buttonText: 'Join Waitlist',
+    color: 'bg-[#6a3093]', // Purple
+    textColor: 'text-white',
+    tags: ['Music', 'Live', 'Concert'],
+    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTv-S5DxtEmv6yIU5mzqj3whQdbAVc6Q2NURQ&s',
+    icon: <Music size={24} />,
+    category: 'event'
+  },
+  {
+    id: 'oppenheimer',
+    listTitle: 'Oppenheimer',
+    listDesc: 'Biography • 3h 00m',
+    heroTitle: 'Oppenheimer',
+    heroSubtitle: 'The story of American scientist J. Robert Oppenheimer and his role in the development of the atomic bomb.',
+    buttonText: 'Book Now',
+    color: 'bg-[#3E2723]', // Dark Brown
+    textColor: 'text-white',
+    tags: ['A', 'Biography', 'Drama'],
+    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSNbm28EZhooHofMhqRbjqYXm58jMZo87-n1A&s',
+    icon: <Film size={24} />,
+    category: 'movie'
+  }
+];
 
 /* -------------------------------------------------------------------------- */
 /* 🎞 UNIVERSAL CAROUSEL COMPONENT                                           */
@@ -66,11 +143,11 @@ const CarouselSection = ({
       <div className="flex items-center justify-between mb-6">
 
         {/* all title color browen */}
-       <h2
-  className="text-2xl font-bold bg-gradient-to-r from-[#6d492e] via-[#a67149] to-[#d0c0b0] text-transparent bg-clip-text"
->
-  {title}
-</h2>
+        <h2
+          className="text-2xl font-bold bg-gradient-to-r from-[#6d492e] via-[#a67149] to-[#d0c0b0] text-transparent bg-clip-text"
+        >
+          {title}
+        </h2>
 
 
         <Button
@@ -144,11 +221,14 @@ const Home = () => {
   const [selectedCategory, setSelectedCategory] = useState<ContentType | "all">(
     "all"
   );
+  const [activeEvent, setActiveEvent] = useState(essentialEvents[0]);
+  const [filterType, setFilterType] = useState<'all' | 'movie' | 'event'>('all');
   const [searchQuery, setSearchQuery] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const trendingGamesRef = useRef<HTMLDivElement>(null);
   const trendingAppsRef = useRef<HTMLDivElement>(null);
   const featuredGamesRef = useRef<HTMLDivElement>(null);
+  const mustWatchRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -166,7 +246,7 @@ const Home = () => {
       if (scrollRef.current) {
         const maxScroll = scrollRef.current.scrollWidth - scrollRef.current.clientWidth;
         const currentScroll = scrollRef.current.scrollLeft;
-        
+
         if (currentScroll >= maxScroll) {
           // Reset to start
           scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
@@ -186,7 +266,7 @@ const Home = () => {
       if (trendingGamesRef.current) {
         const maxScroll = trendingGamesRef.current.scrollWidth - trendingGamesRef.current.clientWidth;
         const currentScroll = trendingGamesRef.current.scrollLeft;
-        
+
         if (currentScroll >= maxScroll) {
           trendingGamesRef.current.scrollTo({ left: 0, behavior: "smooth" });
         } else {
@@ -204,7 +284,7 @@ const Home = () => {
       if (trendingAppsRef.current) {
         const maxScroll = trendingAppsRef.current.scrollWidth - trendingAppsRef.current.clientWidth;
         const currentScroll = trendingAppsRef.current.scrollLeft;
-        
+
         if (currentScroll >= maxScroll) {
           trendingAppsRef.current.scrollTo({ left: 0, behavior: "smooth" });
         } else {
@@ -221,7 +301,7 @@ const Home = () => {
       if (featuredGamesRef.current) {
         const maxScroll = featuredGamesRef.current.scrollWidth - featuredGamesRef.current.clientWidth;
         const currentScroll = featuredGamesRef.current.scrollLeft;
-        
+
         if (currentScroll >= maxScroll) {
           featuredGamesRef.current.scrollTo({ left: 0, behavior: "smooth" });
         } else {
@@ -232,8 +312,44 @@ const Home = () => {
 
     return () => clearInterval(interval);
   }, []);
-  
+
+  // Auto scroll for Must Watch Movies
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (mustWatchRef.current) {
+        const maxScroll = mustWatchRef.current.scrollWidth - mustWatchRef.current.clientWidth;
+        const currentScroll = mustWatchRef.current.scrollLeft;
+
+        if (currentScroll >= maxScroll) {
+          mustWatchRef.current.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          mustWatchRef.current.scrollBy({ left: 300, behavior: "smooth" });
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // ADD FOOTER STATE HERE
+  // Auto scroll for Must Watch Movies
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (mustWatchRef.current) {
+        const maxScroll = mustWatchRef.current.scrollWidth - mustWatchRef.current.clientWidth;
+        const currentScroll = mustWatchRef.current.scrollLeft;
+
+        if (currentScroll >= maxScroll) {
+          mustWatchRef.current.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          mustWatchRef.current.scrollBy({ left: 300, behavior: "smooth" });
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const [expandedFooterSections, setExpandedFooterSections] = useState({
     genre: false,
     help: false,
@@ -303,7 +419,7 @@ const Home = () => {
 
           {/* Horizontal Scrollable Cards */}
           <div className="relative group">
-            <div 
+            <div
               ref={scrollRef}
               className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide pb-4"
             >
@@ -321,7 +437,7 @@ const Home = () => {
                       </span>
                     </div>
                   )}
-                  
+
                   {/* Image */}
                   <div className="relative h-[400px] bg-gray-200">
                     <img
@@ -337,8 +453,8 @@ const Home = () => {
                       {movie.title}
                     </h3>
                     <p className="text-sm font-bold text-[#8B5E3C]">
-                      {movie.theaters && movie.theaters[0]?.showTimes[0] 
-                        ? `₹ ${movie.theaters[0].showTimes[0].price}.00` 
+                      {movie.theaters && movie.theaters[0]?.showTimes[0]
+                        ? `₹ ${movie.theaters[0].showTimes[0].price}.00`
                         : 'Free'}
                     </p>
                   </div>
@@ -400,8 +516,8 @@ const Home = () => {
                 {/* Price */}
                 <div className="flex-none text-right">
                   <p className="text-md font-semibold text-[#3E2723]">
-                    {movie.theaters && movie.theaters[0]?.showTimes[0] 
-                      ? `₹ ${movie.theaters[0].showTimes[0].price}.00` 
+                    {movie.theaters && movie.theaters[0]?.showTimes[0]
+                      ? `₹ ${movie.theaters[0].showTimes[0].price}.00`
                       : 'Free'}
                   </p>
                 </div>
@@ -421,7 +537,7 @@ const Home = () => {
             </h2>
           </div>
 
-          <div 
+          <div
             ref={trendingGamesRef}
             className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-4"
           >
@@ -442,8 +558,8 @@ const Home = () => {
                   </h3>
                   <p className="text-sm text-gray-600">{movie.genre[0]}</p>
                   <p className="text-sm font-semibold text-[#8B5E3C] mt-1">
-                    {movie.theaters && movie.theaters[0]?.showTimes[0] 
-                      ? `₹ ${movie.theaters[0].showTimes[0].price}.00` 
+                    {movie.theaters && movie.theaters[0]?.showTimes[0]
+                      ? `₹ ${movie.theaters[0].showTimes[0].price}.00`
                       : 'Free'}
                   </p>
                 </div>
@@ -463,7 +579,7 @@ const Home = () => {
             </h2>
           </div>
 
-          <div 
+          <div
             ref={trendingAppsRef}
             className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-4"
           >
@@ -486,8 +602,8 @@ const Home = () => {
                     {movie.genre[0] || movie.type}
                   </p>
                   <p className="text-sm font-semibold text-[#8B5E3C] mt-1">
-                    {movie.theaters && movie.theaters[0]?.showTimes[0] 
-                      ? `₹ ${movie.theaters[0].showTimes[0].price}.00` 
+                    {movie.theaters && movie.theaters[0]?.showTimes[0]
+                      ? `₹ ${movie.theaters[0].showTimes[0].price}.00`
                       : 'Free'}
                   </p>
                 </div>
@@ -503,135 +619,192 @@ const Home = () => {
 
 
 
-      {/* MUST-WATCH FREE MOVIES - Grid Layout */}
-      <section className="py-8 bg-white">
+      {/* MUST-WATCH FREE MOVIES - Auto Scroll Horizontal */}
+      {/* MUST-WATCH FREE MOVIES - Auto Scroll Horizontal */}
+      <section className="py-12 bg-white">
         <div className="container">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-[#3E2723] flex items-center gap-2">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-bold text-[#3E2723] flex items-center gap-2">
               Must-watch free movies
               <ChevronRight size={20} />
             </h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {allMovies.filter(m => ["1", "2", "4", "5", "6", "9", "10", "11"].includes(m.id)).slice(0, 8).map((movie, index) => (
-              <div
-                key={movie.id}
-                onClick={() => window.location.href = `/movie/${movie.id}`}
-                className="relative rounded-lg overflow-hidden shadow-lg hover:shadow-xl cursor-pointer transform hover:scale-[1.02] transition-all duration-200 group"
-              >
-                {index === 0 ? (
-                  // Large featured card (first item)
-                  <div className="relative h-[400px] bg-gradient-to-br from-[#1a1a2e] to-[#16213e]">
-                    <img
-                      src={movie.image}
-                      alt={movie.title}
-                      className="w-full h-full object-cover opacity-50"
-                    />
-                    <div className="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-black/90 to-transparent">
-                      <h3 className="text-2xl font-bold text-white mb-2">{movie.title}</h3>
-                      <p className="text-sm text-gray-300 mb-4 line-clamp-2">{movie.description}</p>
-                      <button className="w-fit px-6 py-2 bg-[#DC3545] hover:bg-[#c82333] text-white rounded transition-all">
-                        Get
-                      </button>
-                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
-                        <span className="px-2 py-1 bg-black/30 rounded">12+</span>
-                        <span>{movie.genre.join(', ')}</span>
+          <div
+            ref={mustWatchRef}
+            className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-8 snap-x snap-mandatory px-4"
+          >
+            {/* Chunk movies into pairs */}
+            {(() => {
+              const relevantMovies = allMovies.filter(m => ["1", "2", "4", "5", "6", "9", "10", "11", "7", "8", "3", "12", "13", "14", "15"].includes(m.id)).slice(0, 20);
+              const pairs = [];
+              for (let i = 0; i < relevantMovies.length; i += 2) {
+                pairs.push(relevantMovies.slice(i, i + 2));
+              }
+              return pairs.map((pair, pairIndex) => (
+                <div
+                  key={pairIndex}
+                  className="flex-none w-[400px] flex flex-col gap-3 p-3 rounded border border-gray-100 transition-all duration-300 snap-center"
+                >
+                  {pair.map((movie, index) => (
+                    <div
+                      key={movie.id}
+                      onClick={() => window.location.href = `/movie/${movie.id}`}
+                      className="relative aspect-square w-full rounded overflow-hidden shadow-md cursor-pointer group"
+                    >
+                      <img
+                        src={movie.image}
+                        alt={movie.title}
+                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+                      {/* Content Overlay */}
+                      <div className="absolute bottom-0 left-0 right-0 p-3">
+                        <div className="flex items-end justify-between">
+                          <div>
+                            {pairIndex === 0 && index === 0 && (
+                              <span className="inline-block px-1.5 py-0.5 mb-1 bg-[#107C10] text-white text-[8px] font-bold uppercase tracking-wider rounded-full">
+                                Featured
+                              </span>
+                            )}
+                            <h3 className="text-sm font-bold text-white mb-0.5 leading-tight line-clamp-1">{movie.title}</h3>
+                            <div className="flex items-center gap-1.5 text-[10px] text-gray-300 font-medium">
+                              <span className="px-1 py-0.5 bg-white/20 backdrop-blur rounded text-[8px]">12+</span>
+                              <span className="text-[#107C10] font-bold text-[8px]">Free</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  // Regular movie cards
-                  <div className="relative h-[200px]">
-                    {index < 4 && (
-                      <div className="absolute top-2 left-2 z-10">
-                        <span className="px-2 py-1 bg-[#107C10] text-white text-xs font-semibold rounded">
-                          Featured
-                        </span>
-                      </div>
-                    )}
-                    <img
-                      src={movie.image}
-                      alt={movie.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-3">
-                      <h3 className="text-white font-semibold text-sm mb-1">{movie.title}</h3>
-                      <p className="text-white/80 text-xs">{movie.genre[0]}</p>
-                      <p className="text-white text-xs font-semibold mt-1">Free</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  ))}
+                </div>
+              ));
+            })()}
           </div>
         </div>
       </section>
 
-      {/* PROMOTIONAL BANNER - LinkedIn Style */}
-      <section className="py-8 bg-[#F5F5F5]">
+
+      {/* ESSENTIAL EVENTS - Dynamic Section */}
+      <section className="py-8 bg-white/50">
         <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Large promotional banner */}
-            <div className="lg:col-span-2 bg-gradient-to-r from-[#0077B5] to-[#00A0DC] rounded-xl p-8 text-white relative overflow-hidden">
-              <div className="relative z-10">
-                <h2 className="text-4xl font-bold mb-4">Find your next opportunity</h2>
-                <p className="text-lg mb-6 opacity-90">Your next opportunity could be one click away. Find your dream job today.</p>
-                <button className="px-8 py-3 bg-white text-[#0077B5] font-semibold rounded-lg hover:bg-gray-100 transition-all">
-                  Get started
-                </button>
-                <div className="mt-4 flex items-center gap-2 text-sm opacity-80">
-                  <span className="px-2 py-1 bg-white/20 rounded">12+</span>
-                  <span>Professional Networking</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            {/* Left Column: Dynamic Hero Card */}
+            <div className={`lg:col-span-8 ${activeEvent.color} rounded-xl p-8 text-white relative overflow-hidden transition-all duration-500 shadow-xl`}>
+              <div className="relative z-10 h-full flex flex-col justify-between min-h-[300px]">
+                <div>
+                  <h2 className="text-4xl font-bold mb-4">{activeEvent.heroTitle}</h2>
+                  <p className="text-lg mb-6 opacity-90 max-w-2xl text-[18px]">{activeEvent.heroSubtitle}</p>
+
+                  <button className="px-8 py-3 bg-white text-[#3E2723] font-bold rounded-lg hover:bg-gray-100 transition-all shadow-md">
+                    {activeEvent.buttonText}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-4 mt-8">
+                  {activeEvent.tags.map((tag, idx) => (
+                    <span key={idx} className="bg-white/20 backdrop-blur-md px-3 py-1 rounded text-sm font-medium border border-white/10">
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <div className="absolute right-0 bottom-0 opacity-20">
-                <svg className="w-64 h-64" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                </svg>
+
+              {/* Background Icon/Graphic & Hero Image */}
+              <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-30 mix-blend-overlay">
+                <img
+                  src={activeEvent.image}
+                  alt={activeEvent.heroTitle}
+                  className="w-full h-full object-cover mask-image-linear-gradient"
+                  style={{ maskImage: 'linear-gradient(to right, transparent, black)' }}
+                />
+              </div>
+              <div className="absolute -bottom-12 -right-12 opacity-10 transform rotate-12 scale-150">
+                {/* Can use a larger version of icon or specific graphic */}
+                <div className="w-96 h-96 bg-white rounded-full blur-3xl" />
               </div>
             </div>
 
-            {/* Essential events sidebar */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h3 className="text-xl font-semibold text-[#3E2723] mb-4 flex items-center gap-2">
-                Essential events
-                <ChevronRight size={18} />
+            {/* Right Column: Category List (Filter) with Checkboxes */}
+            <div className="lg:col-span-4 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-xl font-bold text-[#3E2723] mb-4 flex items-center gap-2">
+                Trending Now
+                <ChevronRight className="w-5 h-5" />
               </h3>
-              <p className="text-sm text-gray-600 mb-6">Take your experience to new heights with these must-see events</p>
-              
-              <div className="space-y-3">
-                {allMovies.slice(0, 8).map((movie) => (
-                  <div
-                    key={movie.id}
-                    onClick={() => window.location.href = `/movie/${movie.id}`}
-                    className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer transition-all"
+
+              {/* Filter Tabs */}
+              <div className="flex gap-2 mb-6">
+                {['all', 'movie', 'event'].map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setFilterType(type as any)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-full capitalize transition-all ${filterType === type
+                      ? 'bg-[#3E2723] text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
                   >
-                    <div className="w-10 h-10 bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] rounded flex items-center justify-center text-white font-bold flex-none">
-                      {movie.title.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold text-[#3E2723] truncate">{movie.title}</h4>
-                      <p className="text-xs text-gray-600 capitalize">{movie.genre[0]}</p>
-                    </div>
-                  </div>
+                    {type === 'all' ? 'All' : type + 's'}
+                  </button>
                 ))}
               </div>
+
+              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                {essentialEvents
+                  .filter(e => filterType === 'all' || e.category === filterType)
+                  .map((event) => (
+                    <div
+                      key={event.id}
+                      onClick={() => setActiveEvent(event)}
+                      className="flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50"
+                    >
+                      {/* Checkbox UI */}
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${activeEvent.id === event.id
+                        ? 'bg-[#E50914] border-[#E50914]'
+                        : 'border-gray-300 bg-white'
+                        }`}>
+                        {activeEvent.id === event.id && (
+                          <div className="w-2.5 h-2.5 bg-white rounded-sm" />
+                        )}
+                      </div>
+
+                      <div className="w-12 h-16 rounded overflow-hidden shadow-sm shrink-0">
+                        <img
+                          src={event.image}
+                          alt={event.listTitle}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      <div>
+                        <h4 className={`font-bold text-sm ${activeEvent.id === event.id ? 'text-black' : 'text-gray-700'}`}>
+                          {event.listTitle}
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                          {event.listDesc}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             </div>
+
           </div>
         </div>
       </section>
 
+
+
       {/* FEATURED FREE MOVIES - Large Cards */}
-      <section className="py-8 bg-gradient-to-br from-[#1a472a] to-[#2d5016] text-white">
+      < section className="py-8 bg-gradient-to-br from-[#1a472a] to-[#2d5016] text-white" >
         <div className="container">
           <div className="mb-6">
             <h2 className="text-3xl font-bold mb-2">Featured free movies</h2>
             <p className="text-white/80">Explore free movies to watch and find a new favorite</p>
           </div>
 
-          <div 
+          <div
             ref={featuredGamesRef}
             className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-4"
           >
@@ -664,14 +837,14 @@ const Home = () => {
             See all
           </button>
         </div>
-      </section>
+      </section >
 
       {/* FOOTER - BookMyShow Style */}
-      <footer className="bg-[#333338] text-gray-300">
+      < footer className="bg-[#333338] text-gray-300" >
         <div className="container py-8">
           {/* Main Footer Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 text-xs">
-            
+
             {/* Column 1 - Movies Now Showing */}
             <div>
               <h3 className="text-white font-semibold mb-3 text-sm">MOVIES NOW SHOWING</h3>
@@ -735,7 +908,7 @@ const Home = () => {
 
           {/* Second Row */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 text-xs">
-            
+
             {/* Events */}
             <div>
               <h3 className="text-white font-semibold mb-3 text-sm">EVENTS</h3>
@@ -809,28 +982,28 @@ const Home = () => {
 
             {/* Social Media Icons */}
             <div className="flex items-center gap-4">
-              <button 
+              <button
                 onClick={() => handleSocialClick('Facebook')}
                 className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
                 aria-label="Facebook"
               >
                 <Facebook className="w-4 h-4" />
               </button>
-              <button 
+              <button
                 onClick={() => handleSocialClick('Twitter')}
                 className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
                 aria-label="Twitter"
               >
                 <Twitter className="w-4 h-4" />
               </button>
-              <button 
+              <button
                 onClick={() => handleSocialClick('Instagram')}
                 className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
                 aria-label="Instagram"
               >
                 <Instagram className="w-4 h-4" />
               </button>
-              <button 
+              <button
                 onClick={() => handleSocialClick('YouTube')}
                 className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
                 aria-label="YouTube"
@@ -840,8 +1013,8 @@ const Home = () => {
             </div>
           </div>
         </div>
-      </footer>
-    </div>
+      </footer >
+    </div >
   );
 };
 
