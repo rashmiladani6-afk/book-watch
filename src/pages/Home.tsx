@@ -62,7 +62,7 @@ const essentialEvents = [
     heroTitle: 'MI vs CSK - El Clasico',
     heroSubtitle: 'The biggest rivalry in cricket history returns. Don\'t miss the action live.',
     buttonText: 'Book Now',
-    color: 'bg-[#004BA0]', // MI Blue
+    color: 'bg-[#9A9D9B]', // MI Blue
     textColor: 'text-white',
     tags: ['Sports', 'Cricket', 'Live'],
     image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQdc4sZ7IWMPOHIIjNDpVx7eZMQCkiRkjAitg&s',
@@ -620,7 +620,7 @@ const Home = () => {
 
 
       {/* MUST-WATCH FREE MOVIES - Auto Scroll Horizontal */}
-      {/* MUST-WATCH FREE MOVIES - Auto Scroll Horizontal */}
+      {/* MUST-WATCH FREE MOVIES - Auto Scroll Horizontal */} 
       <section className="py-12 bg-white">
         <div className="container">
           <div className="flex items-center justify-between mb-8">
@@ -650,7 +650,7 @@ const Home = () => {
                     <div
                       key={movie.id}
                       onClick={() => window.location.href = `/movie/${movie.id}`}
-                      className="relative aspect-square w-full rounded overflow-hidden shadow-md cursor-pointer group"
+                      className="relative aspect-square w-50 rounded overflow-hidden shadow-md cursor-pointer group"
                     >
                       <img
                         src={movie.image}
@@ -713,7 +713,7 @@ const Home = () => {
               </div>
 
               {/* Background Icon/Graphic & Hero Image */}
-              <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-30 mix-blend-overlay">
+              <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-38 white-overlay">
                 <img
                   src={activeEvent.image}
                   alt={activeEvent.heroTitle}

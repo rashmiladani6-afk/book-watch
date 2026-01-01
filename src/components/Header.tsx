@@ -98,7 +98,7 @@ const Header = ({ onSearch }: HeaderProps) => {
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Left Section */}
-        <div className="flex items-center gap-2 md:gap-5 flex-1">
+        <div className="flex items-center gap-2 md:gap-5 flex-1 justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center shrink-0">
             <h1
@@ -114,7 +114,7 @@ const Header = ({ onSearch }: HeaderProps) => {
           {/* Desktop Search */}
           <form
             onSubmit={handleSearch}
-            className="hidden md:flex items-center gap-2 flex-1 max-w-md lg:max-w-lg"
+            className="hidden md:flex items-center gap-2 max-w-md lg:max-w-lg mx-auto"
           >
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B5E3C]" />
@@ -145,8 +145,10 @@ const Header = ({ onSearch }: HeaderProps) => {
               Search
             </Button>
           </form>
-        </div>
 
+          {/* Empty div to balance the layout */}
+          <div className="hidden md:block shrink-0 w-[100px]"></div>
+        </div>
         {/* Right Section */}
         <div className="flex items-center gap-2 md:gap-4 shrink-0">
           <Button

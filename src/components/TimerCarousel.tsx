@@ -56,18 +56,24 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
   if (!featuredMovies.length) return null;
 
   return (
-    <div className="relative bg-[#E8DED2] pt-4 pb-6 md:pt-6 md:pb-8">
+    <div className="relative bg-[#E8DED2] pt-4 pb-6 md:pt-6 md:pb-8 ">
       <div className="container mx-auto px-3 sm:px-4">
         {/* Mobile: Stack vertically, Tablet+: Side by side */}
         <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-5">
           {/* Left Large Featured Card */}
-          <div className="relative w-full lg:flex-[0_0_65%] h-[300px] sm:h-[400px] md:h-[500px] lg:h-[600px] rounded-lg sm:rounded-xl overflow-hidden shadow-xl lg:shadow-2xl group">
+
+
+          <div
+            className="relative w-full lg:flex-[0_0_65%] h-[300px] sm:h-[400px] md:h-[500px] lg:h-[600px] rounded-lg sm:rounded-xl overflow-hidden group"
+            style={{
+              boxShadow: '0 15px 35px -5px rgba(0, 0, 0, 0.5)'
+            }}
+          >
             {featuredMovies.map((movie, index) => (
               <div
                 key={movie.id}
-                className={`absolute inset-0 transition-opacity duration-700 ${
-                  index === currentIndex ? "opacity-100" : "opacity-0"
-                }`}
+                className={`absolute inset-0 transition-opacity duration-700 ${index === currentIndex ? "opacity-100" : "opacity-0"
+                  }`}
               >
                 {/* Background Image */}
                 <img
@@ -77,7 +83,7 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
                 />
 
                 {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-white/20" />
 
                 {/* Content */}
                 <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 lg:p-8 text-white">
@@ -123,11 +129,9 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
                         />
                         {/* Progress pie using path */}
                         <path
-                          d={`M 16 16 L 16 0.5 A 15.5 15.5 0 ${progress > 50 ? 1 : 0} 1 ${
-                            16 + 15.5 * Math.sin((progress * 2 * Math.PI) / 100)
-                          } ${
-                            16 - 15.5 * Math.cos((progress * 2 * Math.PI) / 100)
-                          } Z`}
+                          d={`M 16 16 L 16 0.5 A 15.5 15.5 0 ${progress > 50 ? 1 : 0} 1 ${16 + 15.5 * Math.sin((progress * 2 * Math.PI) / 100)
+                            } ${16 - 15.5 * Math.cos((progress * 2 * Math.PI) / 100)
+                            } Z`}
                           fill="rgba(255, 255, 255, 0.85)"
                         />
                       </svg>
@@ -158,9 +162,8 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
                 <button
                   key={index}
                   onClick={() => goToSlide(index)}
-                  className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all duration-300 ${
-                    index === currentIndex ? 'bg-white scale-110' : 'bg-white/40'
-                  }`}
+                  className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all duration-300 ${index === currentIndex ? 'bg-white scale-110' : 'bg-white/40'
+                    }`}
                 />
               ))}
             </div>
@@ -190,7 +193,7 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
             </div>
 
             {/* Bottom Row - Two cards side by side */}
-            <div className="h-[140px] sm:h-[180px] md:h-[200px] lg:h-[240px] flex gap-3 sm:gap-4">
+            <div className="h-[140px] sm:h-[180px] md:h-[200px] lg:h-[245px] flex gap-3 sm:gap-4">
               {/* Bottom-Left Card */}
               {sideCards[0] && (
                 <div
