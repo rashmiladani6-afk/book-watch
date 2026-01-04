@@ -8,7 +8,7 @@ import VerticalSidebar from "./components/VerticalSidebar";
 import Home from "./pages/Home";
 import MovieDetail from "./pages/MovieDetail";
 import SeatSelection from "./pages/SeatSelection";
-import Auth from "./pages/Auth";
+// import Auth from "./pages/Auth";
 import Payment from "./pages/Payment";
 import NotFound from "./pages/NotFound";
 
@@ -27,7 +27,7 @@ const App = () => (
               <Route path="/" element={<Home />} />
               <Route path="/movie/:id" element={<MovieDetail />} />
               <Route path="/book/:showId" element={<SeatSelection />} />
-              <Route path="/auth" element={<Auth />} />
+              {/* <Route path="/auth" element={<Auth />} /> */}
               <Route path="/payment" element={<Payment />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
