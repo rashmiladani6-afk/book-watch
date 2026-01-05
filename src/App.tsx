@@ -11,6 +11,7 @@ import SeatSelection from "./pages/SeatSelection";
 import Auth from "./pages/Auth";
 import Payment from "./pages/Payment";
 import NotFound from "./pages/NotFound";
+import TicketBook from "./pages/TicketBook"; // ✅ Fixed typo
 
 const queryClient = new QueryClient();
 
@@ -26,8 +27,9 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/movie/:id" element={<MovieDetail />} />
+              <Route path="/ticket/:id" element={<TicketBook />} />
               <Route path="/book/:showId" element={<SeatSelection />} />
-              <Route path="/auth" element={<Auth />} />
+              {/* <Route path="/auth" element={<Auth />} /> */}
               <Route path="/payment" element={<Payment />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

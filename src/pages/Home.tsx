@@ -621,70 +621,69 @@ const Home = () => {
 
       {/* MUST-WATCH FREE MOVIES - Auto Scroll Horizontal */}
       {/* MUST-WATCH FREE MOVIES - Auto Scroll Horizontal */} 
-      <section className="py-12 bg-white">
-        <div className="container">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-[#3E2723] flex items-center gap-2">
-              Must-watch free movies
-              <ChevronRight size={20} />
-            </h2>
-          </div>
+     <section className="py-12 bg-white">
+  <div className="container">
+    <div className="flex items-center justify-between mb-8">
+      <h2 className="text-2xl font-bold text-[#3E2723] flex items-center gap-2">
+        Must-watch free movies
+        <ChevronRight size={20} />
+      </h2>
+    </div>
 
+    <div
+      ref={mustWatchRef}
+      className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-8 snap-x snap-mandatory px-4"
+    >
+      {/* Chunk movies into pairs */}
+      {(() => {
+        const relevantMovies = allMovies.filter(m => ["1", "2", "4", "5", "6", "9", "10", "11", "7", "8", "3", "12", "13", "14", "15"].includes(m.id)).slice(0, 20);
+        const pairs = [];
+        for (let i = 0; i < relevantMovies.length; i += 2) {
+          pairs.push(relevantMovies.slice(i, i + 2));
+        }
+        return pairs.map((pair, pairIndex) => (
           <div
-            ref={mustWatchRef}
-            className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-8 snap-x snap-mandatory px-4"
+            key={pairIndex}
+            className="flex-none w-[300px] flex flex-col gap-3 p-3 rounded border border-gray-100 transition-all duration-300 snap-center"
           >
-            {/* Chunk movies into pairs */}
-            {(() => {
-              const relevantMovies = allMovies.filter(m => ["1", "2", "4", "5", "6", "9", "10", "11", "7", "8", "3", "12", "13", "14", "15"].includes(m.id)).slice(0, 20);
-              const pairs = [];
-              for (let i = 0; i < relevantMovies.length; i += 2) {
-                pairs.push(relevantMovies.slice(i, i + 2));
-              }
-              return pairs.map((pair, pairIndex) => (
-                <div
-                  key={pairIndex}
-                  className="flex-none w-[400px] flex flex-col gap-3 p-3 rounded border border-gray-100 transition-all duration-300 snap-center"
-                >
-                  {pair.map((movie, index) => (
-                    <div
-                      key={movie.id}
-                      onClick={() => window.location.href = `/movie/${movie.id}`}
-                      className="relative aspect-square w-50 rounded overflow-hidden shadow-md cursor-pointer group"
-                    >
-                      <img
-                        src={movie.image}
-                        alt={movie.title}
-                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+            {pair.map((movie, index) => (
+              <div
+                key={movie.id}
+                onClick={() => window.location.href = `/movie/${movie.id}`}
+                className="relative aspect-[3/4] w-full rounded overflow-hidden shadow-md cursor-pointer group"
+              >
+                <img
+                  src={movie.image}
+                  alt={movie.title}
+                  className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                      {/* Content Overlay */}
-                      <div className="absolute bottom-0 left-0 right-0 p-3">
-                        <div className="flex items-end justify-between">
-                          <div>
-                            {pairIndex === 0 && index === 0 && (
-                              <span className="inline-block px-1.5 py-0.5 mb-1 bg-[#107C10] text-white text-[8px] font-bold uppercase tracking-wider rounded-full">
-                                Featured
-                              </span>
-                            )}
-                            <h3 className="text-sm font-bold text-white mb-0.5 leading-tight line-clamp-1">{movie.title}</h3>
-                            <div className="flex items-center gap-1.5 text-[10px] text-gray-300 font-medium">
-                              <span className="px-1 py-0.5 bg-white/20 backdrop-blur rounded text-[8px]">12+</span>
-                              <span className="text-[#107C10] font-bold text-[8px]">Free</span>
-                            </div>
-                          </div>
-                        </div>
+                {/* Content Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-3">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      {pairIndex === 0 && index === 0 && (
+                        <span className="inline-block px-1.5 py-0.5 mb-1 bg-[#107C10] text-white text-[8px] font-bold uppercase tracking-wider rounded-full">
+                          Featured
+                        </span>
+                      )}
+                      <h3 className="text-sm font-bold text-white mb-0.5 leading-tight line-clamp-1">{movie.title}</h3>
+                      <div className="flex items-center gap-1.5 text-[10px] text-gray-300 font-medium">
+                        <span className="px-1 py-0.5 bg-white/20 backdrop-blur rounded text-[8px]">12+</span>
+                        <span className="text-[#107C10] font-bold text-[8px]">Free</span>
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              ));
-            })()}
+              </div>
+            ))}
           </div>
-        </div>
-      </section>
-
+        ));
+      })()}
+    </div>
+  </div>
+</section>
 
       {/* ESSENTIAL EVENTS - Dynamic Section */}
       <section className="py-8 bg-white/50">

@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -11,7 +9,6 @@ import { CreditCard, CheckCircle } from 'lucide-react';
 const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [processing, setProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
@@ -33,39 +30,14 @@ const Payment = () => {
   }
 
   const handlePayment = async () => {
-    if (!user) {
-      toast.error('Please sign in to complete booking');
-      navigate('/auth');
-      return;
-    }
-
     setProcessing(true);
 
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Save booking to database
-    const { error } = await supabase.from('bookings').insert({
-      user_id: user.id,
-      movie_title: bookingData.movieTitle,
-      theater_name: bookingData.theaterName,
-      show_time: bookingData.showTime,
-      show_date: bookingData.showDate,
-      seats: bookingData.seats,
-      total_amount: bookingData.totalAmount,
-      payment_status: 'completed',
-      booking_status: 'confirmed',
-    });
-
     setProcessing(false);
-
-    if (error) {
-      toast.error('Booking failed. Please try again.');
-      console.error('Booking error:', error);
-    } else {
-      setPaymentSuccess(true);
-      toast.success('Booking confirmed successfully!');
-    }
+    setPaymentSuccess(true);
+    toast.success('Booking confirmed successfully!');
   };
 
   if (paymentSuccess) {

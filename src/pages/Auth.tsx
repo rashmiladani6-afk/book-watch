@@ -118,6 +118,7 @@ const Auth = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      
                     />
                   </div>
                   <div className="space-y-2">
