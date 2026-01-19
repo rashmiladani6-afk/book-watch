@@ -369,7 +369,7 @@ export const movies: Movie[] = [
     image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTY8-v1uvjrKbAWkcuQZ10YejnMxFoFIDqLjg&s",
     background: "https://assets-in.bmscdn.com/iedb/movies/images/mobile/listing/medium/chaniya-toli-et00451887-1757313632.jpg",
     heroPhoto: "",
-    trailerUrl: "https://www.youtube.com/watch?v=NjvD-qZh9jM",
+    trailerUrl: "v=NjvD-qZh9jM",
     rating: 9.4,
     types: "2D",
     votes: "67.8K",

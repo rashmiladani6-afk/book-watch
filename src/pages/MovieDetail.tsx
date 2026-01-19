@@ -360,9 +360,9 @@ useEffect(() => {
 
             {/* Video Container */}
             <div className="relative w-full h-full sm:h-auto sm:aspect-video bg-black">
-              <iframe
+               <iframe
                 className="w-full h-full"
-                src={`https://www.youtube.com/embed/GUk5tqdV_uk?autoplay=1&rel=0&modestbranding=1&controls=1`}
+                src={`https://www.youtube.com/embed/${movie.trailerUrl}?autoplay=1&rel=0&modestbranding=1&controls=1`}
                 title={`${movie.title} - Official Trailer`}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
