@@ -118,94 +118,96 @@ const SeatSelection = () => {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <div className="container px-4 sm:px-6 py-4 sm:py-8">
-        {/* Back Button */}
-        {/* <Button 
-          variant="ghost" 
-          onClick={() => navigate(`/movie/${movie.id}`)}
-          className="mb-4 sm:mb-6"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
-        </Button> */}
-
-        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+      <div className="w-full px-2 sm:px-4 md:px-6 py-3 sm:py-6 md:py-8 max-w-7xl mx-auto">
+        <div className="grid lg:grid-cols-3 gap-3 sm:gap-5 lg:gap-8">
           {/* Seats Section */}
           <div className="lg:col-span-2">
-            <Card className="p-4 sm:p-6">
+            <Card className="p-3 sm:p-5 md:p-6">
               {/* Movie Info */}
-              <div className="mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">{movie.title}</h2>
-                <p className="text-sm sm:text-base text-muted-foreground">
+              <div className="mb-3 sm:mb-5 md:mb-6">
+                <h2 className="text-base sm:text-xl md:text-2xl font-bold mb-1">{movie.title}</h2>
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
                   {theater.name} | {showTime.time}
                 </p>
               </div>
 
-              {/* Screen Indicator */}
-              <div className="mb-4 sm:mb-6">
-                <div className="w-full max-w-md mx-auto">
-                  <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent mb-2"></div>
-                  <div className="text-center text-xs sm:text-sm text-muted-foreground">
-                    Screen this way
+              {/* Seats Grid - Mobile Optimized */}
+              <div className="overflow-x-auto overflow-y-visible pb-3 -mx-3 px-3 sm:mx-0 sm:px-0">
+                <div className="inline-block min-w-full">
+                  <div className="mx-auto w-fit">
+                    {rows.map(row => (
+                      <div key={row} className="flex items-center justify-center gap-[3px] sm:gap-1 md:gap-2 mb-1 sm:mb-1.5">
+                        {/* Left Row Label */}
+                        <span className="w-3 sm:w-4 md:w-6 text-[9px] sm:text-xs md:text-sm font-medium text-muted-foreground text-center flex-shrink-0">
+                          {row}
+                        </span>
+                        
+                        {/* Seats */}
+                        <div className="flex gap-[3px] sm:gap-1 md:gap-2">
+                          {seats.filter(s => s.row === row).map(seat => (
+                            <button
+                              key={seat.id}
+                              disabled={seat.status === "booked"}
+                              onClick={() => toggleSeat(seat.id)}
+                              className={`
+                                w-5 h-5 sm:w-7 sm:h-7 md:w-9 md:h-9 lg:w-10 lg:h-10
+                                rounded text-[8px] sm:text-[10px] md:text-xs font-medium
+                                transition-all duration-200 flex-shrink-0
+                                ${
+                                  seat.status === "available"
+                                    ? "bg-muted border border-border hover:bg-muted/80 active:scale-95"
+                                    : seat.status === "selected"
+                                    ? "bg-primary text-white scale-105 shadow-md"
+                                    : "bg-muted-foreground/20 cursor-not-allowed opacity-50"
+                                }
+                              `}
+                            >
+                              {seat.number}
+                            </button>
+                          ))}
+                        </div>
+                        
+                        {/* Right Row Label */}
+                        <span className="w-3 sm:w-4 md:w-6 text-[9px] sm:text-xs md:text-sm font-medium text-muted-foreground text-center flex-shrink-0">
+                          {row}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Seats Grid - Horizontally Scrollable on Mobile */}
-              <div className="overflow-x-auto pb-4">
-                <div className="min-w-max mx-auto">
-                  {rows.map(row => (
-                    <div key={row} className="flex items-center gap-1 sm:gap-2 mb-1.5 sm:mb-2">
-                      <span className="w-4 sm:w-6 text-xs sm:text-sm font-medium">{row}</span>
-                      <div className="flex gap-1 sm:gap-2 flex-1 justify-center">
-                        {seats.filter(s => s.row === row).map(seat => (
-                          <button
-                            key={seat.id}
-                            disabled={seat.status === "booked"}
-                            onClick={() => toggleSeat(seat.id)}
-                            className={`
-                              w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10
-                              rounded text-[10px] sm:text-xs font-medium
-                              transition-all duration-200
-                              ${
-                                seat.status === "available"
-                                  ? "bg-muted border border-border hover:bg-muted/80 hover:scale-105"
-                                  : seat.status === "selected"
-                                  ? "bg-primary text-white scale-105 shadow-md"
-                                  : "bg-muted-foreground/20 cursor-not-allowed opacity-50"
-                              }
-                            `}
-                          >
-                            {seat.number}
-                          </button>
-                        ))}
-                      </div>
-                      <span className="w-4 sm:w-6 text-xs sm:text-sm font-medium">{row}</span>
-                    </div>
-                  ))}
+              {/* Screen Indicator at Bottom */}
+              <div className="mt-3 sm:mt-5 mb-3 sm:mb-5">
+                <div className="w-full max-w-md mx-auto px-2">
+                  <div className="text-center text-[10px] sm:text-xs md:text-sm text-muted-foreground mb-1.5 sm:mb-2">
+                    Screen this way
+                  </div>
+                  <div className="h-0.5 sm:h-1 bg-gradient-to-r from-transparent via-primary to-transparent rounded"></div>
                 </div>
               </div>
 
               {/* Legend */}
-              <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t">
-                <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 sm:w-5 sm:h-5 bg-muted border rounded"></div>
+              <div className="pt-3 sm:pt-5 border-t">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 md:gap-4 text-[10px] sm:text-xs md:text-sm mb-2 sm:mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 bg-muted border rounded flex-shrink-0"></div>
                     <span>Available</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 sm:w-5 sm:h-5 bg-primary rounded"></div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 bg-primary rounded flex-shrink-0"></div>
                     <span>Selected</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 sm:w-5 sm:h-5 bg-muted-foreground/20 rounded"></div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 bg-muted-foreground/20 rounded flex-shrink-0"></div>
                     <span>Booked</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 sm:gap-4 mt-3 sm:mt-4">
-                  <Badge variant="outline" className="text-xs sm:text-sm">
+                <div className="flex flex-wrap gap-2 sm:gap-3 justify-center sm:justify-start">
+                  <Badge variant="outline" className="text-[10px] sm:text-xs px-2 py-0.5">
                     Regular ₹{showTime.price}
                   </Badge>
-                  <Badge variant="outline" className="text-xs sm:text-sm">
+                  <Badge variant="outline" className="text-[10px] sm:text-xs px-2 py-0.5">
                     Premium ₹{premiumPrice}
                   </Badge>
                 </div>
@@ -213,16 +215,20 @@ const SeatSelection = () => {
             </Card>
           </div>
 
-          {/* Summary Section - Sticky on Desktop, Bottom on Mobile */}
+          {/* Booking Summary - Sticky on Desktop */}
           <div className="lg:sticky lg:top-24 lg:self-start">
-            <Card className="p-4 sm:p-6">
-              <h3 className="font-semibold text-lg sm:text-xl mb-4">Booking Summary</h3>
+            <Card className="p-3 sm:p-5 md:p-6">
+              <h3 className="font-semibold text-sm sm:text-lg md:text-xl mb-3 sm:mb-4">
+                Booking Summary
+              </h3>
 
-              {/* Selected Seats */}
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-2 sm:space-y-3">
+                {/* Selected Seats */}
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Selected Seats</p>
-                  <p className="text-sm sm:text-base font-medium">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">
+                    Selected Seats
+                  </p>
+                  <p className="text-xs sm:text-sm md:text-base font-medium break-words leading-relaxed">
                     {selectedSeats.length > 0 
                       ? selectedSeats.map(s => s.id).join(", ")
                       : "No seats selected"
@@ -230,27 +236,36 @@ const SeatSelection = () => {
                   </p>
                 </div>
 
-                <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm text-muted-foreground">Number of Tickets</span>
-                  <span className="text-sm sm:text-base font-semibold">{selectedSeats.length}</span>
+                {/* Number of Tickets */}
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-[10px] sm:text-xs md:text-sm text-muted-foreground">
+                    Number of Tickets
+                  </span>
+                  <span className="text-xs sm:text-sm md:text-base font-semibold">
+                    {selectedSeats.length}
+                  </span>
                 </div>
 
                 {selectedSeats.length > 0 && (
                   <>
-                    <div className="border-t pt-3 sm:pt-4 space-y-2">
-                      <div className="flex justify-between text-xs sm:text-sm">
+                    {/* Price Breakdown */}
+                    <div className="border-t pt-2 sm:pt-3 space-y-1.5">
+                      <div className="flex justify-between text-[10px] sm:text-xs md:text-sm">
                         <span>Ticket Price</span>
                         <span>₹{calculateTotal()}</span>
                       </div>
-                      <div className="flex justify-between text-xs sm:text-sm">
+                      <div className="flex justify-between text-[10px] sm:text-xs md:text-sm">
                         <span>Convenience Fee</span>
                         <span>₹{selectedSeats.length * 30}</span>
                       </div>
                     </div>
 
-                    <div className="border-t pt-3 sm:pt-4 flex justify-between items-center">
-                      <span className="font-semibold text-base sm:text-lg">Total Amount</span>
-                      <span className="font-bold text-lg sm:text-xl text-primary">
+                    {/* Total Amount */}
+                    <div className="border-t pt-2 sm:pt-3 flex justify-between items-center">
+                      <span className="font-semibold text-xs sm:text-base md:text-lg">
+                        Total Amount
+                      </span>
+                      <span className="font-bold text-sm sm:text-lg md:text-xl text-primary">
                         ₹{calculateTotal() + selectedSeats.length * 30}
                       </span>
                     </div>
@@ -258,8 +273,9 @@ const SeatSelection = () => {
                 )}
               </div>
 
+              {/* Proceed Button */}
               <Button 
-                className="w-full mt-4 sm:mt-6 h-10 sm:h-11 text-sm sm:text-base" 
+                className="w-full mt-3 sm:mt-5 h-9 sm:h-10 md:h-11 text-xs sm:text-sm md:text-base font-semibold" 
                 onClick={handleProceed}
                 disabled={selectedSeats.length === 0}
               >
@@ -270,186 +286,207 @@ const SeatSelection = () => {
         </div>
       </div>
 
-      {/* Footer - Updated for Better Responsiveness */}
-  
-    <div className="mt-40">
+      {/* Footer */}
+      <div className="mt-8 sm:mt-16 lg:mt-32">
+        <footer className="bg-[#333338] text-gray-300">
+          <div className="w-full px-3 sm:px-6 py-5 sm:py-8">
+            {/* Main Footer Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5 lg:gap-6 mb-5 sm:mb-8 text-[10px] sm:text-xs">
+              
+              {/* Column 1 */}
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold mb-2 text-[11px] sm:text-sm uppercase">
+                  Movies Now Showing
+                </h3>
+                <ul className="space-y-1">
+                  {['Dune: Part Two', 'Oppenheimer', 'The Batman', 'Spider-Man', 'Avatar 2', 'Top Gun'].map(item => (
+                    <li 
+                      key={item} 
+                      onClick={() => handleFooterLinkClick(item)} 
+                      className="cursor-pointer hover:text-white transition-colors truncate"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-    
-  <footer className="bg-[#333338] text-gray-300" >
-        <div className="container py-8">
-          {/* Main Footer Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 text-xs">
+              {/* Column 2 */}
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold mb-2 text-[11px] sm:text-sm uppercase">
+                  Movies by Genre
+                </h3>
+                <ul className="space-y-1">
+                  {['Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Sci-Fi'].map(item => (
+                    <li 
+                      key={item} 
+                      onClick={() => handleFooterLinkClick(item)} 
+                      className="cursor-pointer hover:text-white transition-colors truncate"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-            {/* Column 1 - Movies Now Showing */}
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">MOVIES NOW SHOWING</h3>
-              <ul className="space-y-1.5">
-                {['Dune: Part Two', 'Oppenheimer', 'The Batman', 'Spider-Man', 'Avatar 2', 'Top Gun Maverick'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
+              {/* Column 3 */}
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold mb-2 text-[11px] sm:text-sm uppercase">
+                  Movies by Language
+                </h3>
+                <ul className="space-y-1">
+                  {['English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada'].map(item => (
+                    <li 
+                      key={item} 
+                      onClick={() => handleFooterLinkClick(item)} 
+                      className="cursor-pointer hover:text-white transition-colors truncate"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Column 4 */}
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold mb-2 text-[11px] sm:text-sm uppercase">
+                  Top Cities
+                </h3>
+                <ul className="space-y-1">
+                  {['Mumbai', 'Delhi-NCR', 'Bangalore', 'Hyderabad', 'Chennai', 'Pune'].map(item => (
+                    <li 
+                      key={item} 
+                      onClick={() => handleFooterLinkClick(item)} 
+                      className="cursor-pointer hover:text-white transition-colors truncate"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Column 5 */}
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold mb-2 text-[11px] sm:text-sm uppercase">
+                  Help & Support
+                </h3>
+                <ul className="space-y-1">
+                  {['About Us', 'Contact Us', 'FAQs', 'Terms', 'Privacy', 'Careers'].map(item => (
+                    <li 
+                      key={item} 
+                      onClick={() => handleFooterLinkClick(item)} 
+                      className="cursor-pointer hover:text-white transition-colors truncate"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
-            {/* Column 2 - Movies By Genre */}
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">MOVIES BY GENRE</h3>
-              <ul className="space-y-1.5">
-                {['Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Sci-Fi', 'Thriller'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
+            {/* Second Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5 lg:gap-6 mb-5 sm:mb-8 text-[10px] sm:text-xs">
+              
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold mb-2 text-[11px] sm:text-sm uppercase">Events</h3>
+                <ul className="space-y-1">
+                  {['Live Events', 'Concerts', 'Comedy Shows', 'Workshops'].map(item => (
+                    <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors truncate">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold mb-2 text-[11px] sm:text-sm uppercase">Plays</h3>
+                <ul className="space-y-1">
+                  {['Theatre Mumbai', 'Theatre Delhi', 'Theatre Bangalore'].map(item => (
+                    <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors truncate">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold mb-2 text-[11px] sm:text-sm uppercase">Sports</h3>
+                <ul className="space-y-1">
+                  {['Cricket', 'Football', 'Badminton', 'Tennis'].map(item => (
+                    <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors truncate">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold mb-2 text-[11px] sm:text-sm uppercase">Activities</h3>
+                <ul className="space-y-1">
+                  {['Adventure Sports', 'Gaming', 'Water Parks'].map(item => (
+                    <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors truncate">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold mb-2 text-[11px] sm:text-sm uppercase">Stream</h3>
+                <ul className="space-y-1">
+                  {['Premiere', 'Rentals', 'New Releases'].map(item => (
+                    <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors truncate">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
-            {/* Column 3 - Movies By Language */}
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">MOVIES BY LANGUAGE</h3>
-              <ul className="space-y-1.5">
-                {['English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'Bengali'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {/* Divider */}
+            <div className="border-t border-gray-600 my-4"></div>
 
-            {/* Column 4 - Movies in Top Cities */}
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">MOVIES IN TOP CITIES</h3>
-              <ul className="space-y-1.5">
-                {['Mumbai', 'Delhi-NCR', 'Bangalore', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    Movies in {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {/* Bottom Section */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-[10px] sm:text-xs">
+              <div className="text-gray-400">
+                © 2025 Book&Watch. All Rights Reserved.
+              </div>
 
-            {/* Column 5 - Help & Support */}
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">HELP & SUPPORT</h3>
-              <ul className="space-y-1.5">
-                {['About Us', 'Contact Us', 'FAQs', 'Terms & Conditions', 'Privacy Policy', 'Careers'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
+              {/* Social Icons */}
+              <div className="flex gap-2 sm:gap-3">
+                <button
+                  onClick={() => handleSocialClick('Facebook')}
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
+                  aria-label="Facebook"
+                >
+                  <Facebook className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+                <button
+                  onClick={() => handleSocialClick('Twitter')}
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
+                  aria-label="Twitter"
+                >
+                  <Twitter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+                <button
+                  onClick={() => handleSocialClick('Instagram')}
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
+                  aria-label="Instagram"
+                >
+                  <Instagram className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+                <button
+                  onClick={() => handleSocialClick('YouTube')}
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
+                  aria-label="YouTube"
+                >
+                  <Youtube className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* Second Row */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 text-xs">
-
-            {/* Events */}
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">EVENTS</h3>
-              <ul className="space-y-1.5">
-                {['Live Events', 'Concerts', 'Comedy Shows', 'Workshops', 'Exhibitions'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Plays */}
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">PLAYS</h3>
-              <ul className="space-y-1.5">
-                {['Theatre in Mumbai', 'Theatre in Delhi', 'Theatre in Bangalore', 'Theatre in Chennai'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Sports */}
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">SPORTS</h3>
-              <ul className="space-y-1.5">
-                {['Cricket', 'Football', 'Badminton', 'Tennis', 'Basketball'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Activities */}
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">ACTIVITIES</h3>
-              <ul className="space-y-1.5">
-                {['Adventure Sports', 'Gaming Zones', 'Water Parks', 'Amusement Parks'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Streaming */}
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">STREAM</h3>
-              <ul className="space-y-1.5">
-                {['Premiere', 'Rentals', 'New Releases', 'Popular'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-gray-600 my-6"></div>
-
-          {/* Bottom Section */}
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
-            {/* Copyright */}
-            <div className="text-gray-400">
-              © 2025 Book&Watch. All Rights Reserved.
-            </div>
-
-            {/* Social Media Icons */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => handleSocialClick('Facebook')}
-                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
-                aria-label="Facebook"
-              >
-                <Facebook className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleSocialClick('Twitter')}
-                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
-                aria-label="Twitter"
-              >
-                <Twitter className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleSocialClick('Instagram')}
-                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
-                aria-label="Instagram"
-              >
-                <Instagram className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleSocialClick('YouTube')}
-                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
-                aria-label="YouTube"
-              >
-                <Youtube className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </footer >
-    </div>
+        </footer>
+      </div>
     </div>
   );
 };

@@ -30,12 +30,19 @@ export interface Movie {
   theaters?: Theater[];
   cast?: Cast[];
   crew?: Crew[];
+  reviews?: Review[];
 }
 
 export interface ShowTime {
   time: string;
   price: number;
   showId: string;
+}
+
+export interface Review {
+  user: string;
+  rating: number;
+  comment: string;
 }
 
 export interface Theater {
@@ -84,6 +91,26 @@ export const movies: Movie[] = [
         image: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Austin_Butler_2022.jpg/220px-Austin_Butler_2022.jpg"
       }
     ],
+      reviews: [
+    {
+      user: "Rohan Mehta",
+      rating: 9,
+      comment:
+        "Visually stunning and emotionally powerful. Denis Villeneuve delivers a masterpiece."
+    },
+    {
+      user: "Anjali Patel",
+      rating: 8.5,
+      comment:
+        "Epic scale, amazing performances and incredible background score."
+    },
+    {
+      user: "Amit Shah",
+      rating: 8,
+      comment:
+        "Slow in parts but the world-building and action sequences are top-notch."
+    }
+  ],
     crew: [
       {
         name: "Jay Bodas",
@@ -130,6 +157,26 @@ export const movies: Movie[] = [
     duration: "3h 0m",
     language: "English",
     releaseDate: "21 Jul, 2023",
+      reviews: [
+    {
+      user: "Rohan Mehta",
+      rating: 9,
+      comment:
+        "Visually stunning and emotionally powerful. Denis Villeneuve delivers a masterpiece."
+    },
+    {
+      user: "Anjali Patel",
+      rating: 8.5,
+      comment:
+        "Epic scale, amazing performances and incredible background score."
+    },
+    {
+      user: "Amit Shah",
+      rating: 8,
+      comment:
+        "Slow in parts but the world-building and action sequences are top-notch."
+    }
+  ],
     cast: [
       {
         name: "Cillian Murphy",
@@ -180,6 +227,26 @@ export const movies: Movie[] = [
     duration: "10 Episodes",
     language: "English",
     releaseDate: "16 Nov, 2023",
+      reviews: [
+    {
+      user: "Rohan Mehta",
+      rating: 9,
+      comment:
+        "Visually stunning and emotionally powerful. Denis Villeneuve delivers a masterpiece."
+    },
+    {
+      user: "Anjali Patel",
+      rating: 8.5,
+      comment:
+        "Epic scale, amazing performances and incredible background score."
+    },
+    {
+      user: "Amit Shah",
+      rating: 8,
+      comment:
+        "Slow in parts but the world-building and action sequences are top-notch."
+    }
+  ],
     cast: [
       {
         name: "Imelda Staunton",
@@ -228,6 +295,26 @@ export const movies: Movie[] = [
         ],
       },
     ],
+      reviews: [
+    {
+      user: "Rohan Mehta",
+      rating: 9,
+      comment:
+        "Visually stunning and emotionally powerful. Denis Villeneuve delivers a masterpiece."
+    },
+    {
+      user: "Anjali Patel",
+      rating: 8.5,
+      comment:
+        "Epic scale, amazing performances and incredible background score."
+    },
+    {
+      user: "Amit Shah",
+      rating: 8,
+      comment:
+        "Slow in parts but the world-building and action sequences are top-notch."
+    }
+  ],
   },
   {
     id: "6",
@@ -254,6 +341,26 @@ export const movies: Movie[] = [
         ],
       },
     ],
+      reviews: [
+    {
+      user: "Rohan Mehta",
+      rating: 9,
+      comment:
+        "Visually stunning and emotionally powerful. Denis Villeneuve delivers a masterpiece."
+    },
+    {
+      user: "Anjali Patel",
+      rating: 8.5,
+      comment:
+        "Epic scale, amazing performances and incredible background score."
+    },
+    {
+      user: "Amit Shah",
+      rating: 8,
+      comment:
+        "Slow in parts but the world-building and action sequences are top-notch."
+    }
+  ],
   },
   {
     id: "7",
@@ -323,6 +430,26 @@ export const movies: Movie[] = [
         image: "",
       },
     ],
+      reviews: [
+    {
+      user: "Rohan Mehta",
+      rating: 9,
+      comment:
+        "Visually stunning and emotionally powerful. Denis Villeneuve delivers a masterpiece."
+    },
+    {
+      user: "Anjali Patel",
+      rating: 8.5,
+      comment:
+        "Epic scale, amazing performances and incredible background score."
+    },
+    {
+      user: "Amit Shah",
+      rating: 8,
+      comment:
+        "Slow in parts but the world-building and action sequences are top-notch."
+    }
+  ],
      crew: [
       {
         name: "Jay Bodas",
@@ -392,6 +519,26 @@ export const movies: Movie[] = [
         ],
       },
     ],
+      reviews: [
+    {
+      user: "Rohan Mehta",
+      rating: 9,
+      comment:
+        "Visually stunning and emotionally powerful. Denis Villeneuve delivers a masterpiece."
+    },
+    {
+      user: "Anjali Patel",
+      rating: 8.5,
+      comment:
+        "Epic scale, amazing performances and incredible background score."
+    },
+    {
+      user: "Amit Shah",
+      rating: 8,
+      comment:
+        "Slow in parts but the world-building and action sequences are top-notch."
+    }
+  ],
   },
   {
     id: "9",
@@ -418,6 +565,26 @@ export const movies: Movie[] = [
         ],
       },
     ],
+      reviews: [
+    {
+      user: "Rohan Mehta",
+      rating: 9,
+      comment:
+        "Visually stunning and emotionally powerful. Denis Villeneuve delivers a masterpiece."
+    },
+    {
+      user: "Anjali Patel",
+      rating: 8.5,
+      comment:
+        "Epic scale, amazing performances and incredible background score."
+    },
+    {
+      user: "Amit Shah",
+      rating: 8,
+      comment:
+        "Slow in parts but the world-building and action sequences are top-notch."
+    }
+  ],
   },
   {
     id: "10",
@@ -444,6 +611,26 @@ export const movies: Movie[] = [
         ],
       },
     ],
+      reviews: [
+    {
+      user: "Rohan Mehta",
+      rating: 9,
+      comment:
+        "Visually stunning and emotionally powerful. Denis Villeneuve delivers a masterpiece."
+    },
+    {
+      user: "Anjali Patel",
+      rating: 8.5,
+      comment:
+        "Epic scale, amazing performances and incredible background score."
+    },
+    {
+      user: "Amit Shah",
+      rating: 8,
+      comment:
+        "Slow in parts but the world-building and action sequences are top-notch."
+    }
+  ],
   },
   {
     id: "11",
@@ -473,5 +660,25 @@ export const movies: Movie[] = [
         ],
       },
     ],
+      reviews: [
+    {
+      user: "Rohan Mehta",
+      rating: 9,
+      comment:
+        "Visually stunning and emotionally powerful. Denis Villeneuve delivers a masterpiece."
+    },
+    {
+      user: "Anjali Patel",
+      rating: 8.5,
+      comment:
+        "Epic scale, amazing performances and incredible background score."
+    },
+    {
+      user: "Amit Shah",
+      rating: 8,
+      comment:
+        "Slow in parts but the world-building and action sequences are top-notch."
+    }
+  ],
   },
 ];
