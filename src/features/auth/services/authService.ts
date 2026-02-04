@@ -1,138 +1,62 @@
-/**
- * Authentication Service
- * Handles all authentication-related API calls
- */
+// src/features/auth/services/authService.ts
+import axios from 'axios';
 
-import { apiClient } from '@/shared/services/api/client';
-import { API_ENDPOINTS } from '@/shared/services/api/endpoints';
-import type { ApiResponse } from '@/shared/types/api';
-import { supabase } from '@/lib/supabase/client';
+const API_BASE_URL = '/api/v1/odoo';
+const AUTH_TOKEN = 'Bearer 3zwg4rojjDnuNPqpOehv4rAwYnLfNZb2JBAN';
 
-interface SignUpData {
-    email: string;
-    password: string;
-    fullName?: string;
+export interface LoginRequest {
+  login: string;
+  type: 'email' | 'phone';
 }
 
-interface SignInData {
-    email: string;
-    password: string;
+export interface LoginResponse {
+  status: string;
+  message: string;
+  data: {
+    message: string;
+  };
+}
+
+export interface VerifyOTPRequest {
+  otp: string;
+  login: string;
 }
 
 export const authService = {
-    /**
-     * Sign up a new user
-     */
-    async signUp(data: SignUpData): Promise<ApiResponse<any>> {
-        try {
-            // Uncomment when backend is ready:
-            // return await apiClient.post(API_ENDPOINTS.AUTH.SIGN_UP, data);
+  login: async (data: LoginRequest): Promise<LoginResponse> => {
+    try {
+      const url = `${API_BASE_URL}/login?login=${encodeURIComponent(data.login)}&type=${data.type}`;
+      
+      const response = await axios.post(url, {}, {
+        headers: {
+          'Authorization': AUTH_TOKEN,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Login API Error:', error.response?.data || error);
+      throw error;
+    }
+  },
 
-            // Temporary: Use Supabase directly
-            const { data: authData, error } = await supabase.auth.signUp({
-                email: data.email,
-                password: data.password,
-                options: {
-                    data: {
-                        full_name: data.fullName,
-                    },
-                },
-            });
-
-            if (error) throw error;
-
-            return {
-                data: authData,
-                success: true,
-                message: 'Account created successfully',
-            };
-        } catch (error: any) {
-            throw error;
-        }
-    },
-
-    /**
-     * Sign in an existing user
-     */
-    async signIn(data: SignInData): Promise<ApiResponse<any>> {
-        try {
-            // Uncomment when backend is ready:
-            // return await apiClient.post(API_ENDPOINTS.AUTH.SIGN_IN, data);
-
-            // Temporary: Use Supabase directly
-            const { data: authData, error } = await supabase.auth.signInWithPassword({
-                email: data.email,
-                password: data.password,
-            });
-
-            if (error) throw error;
-
-            return {
-                data: authData,
-                success: true,
-                message: 'Signed in successfully',
-            };
-        } catch (error: any) {
-            throw error;
-        }
-    },
-
-    /**
-     * Sign out the current user
-     */
-    async signOut(): Promise<ApiResponse<any>> {
-        try {
-            // Uncomment when backend is ready:
-            // return await apiClient.post(API_ENDPOINTS.AUTH.SIGN_OUT);
-
-            // Temporary: Use Supabase directly
-            const { error } = await supabase.auth.signOut();
-
-            if (error) throw error;
-
-            return {
-                data: null,
-                success: true,
-                message: 'Signed out successfully',
-            };
-        } catch (error: any) {
-            throw error;
-        }
-    },
-
-    /**
-     * Get current user session
-     */
-    async getSession(): Promise<ApiResponse<any>> {
-        try {
-            const { data, error } = await supabase.auth.getSession();
-
-            if (error) throw error;
-
-            return {
-                data: data.session,
-                success: true,
-            };
-        } catch (error: any) {
-            throw error;
-        }
-    },
-
-    /**
-     * Get current user
-     */
-    async getUser(): Promise<ApiResponse<any>> {
-        try {
-            const { data, error } = await supabase.auth.getUser();
-
-            if (error) throw error;
-
-            return {
-                data: data.user,
-                success: true,
-            };
-        } catch (error: any) {
-            throw error;
-        }
-    },
+  verifyOTP: async (data: VerifyOTPRequest): Promise<any> => {
+    try {
+      // Use query parameters just like the login endpoint
+      const url = `${API_BASE_URL}/verify-otp?login=${encodeURIComponent(data.login)}&type=email&otp=${data.otp}`;
+      
+      const response = await axios.post(url, {}, {
+        headers: {
+          'Authorization': AUTH_TOKEN,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Verify OTP Error:', error.response?.data || error);
+      throw error;
+    }
+  },
 };

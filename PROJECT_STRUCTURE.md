@@ -89,23 +89,27 @@ src/
 ## 🎯 Key Features
 
 ### 1. Feature-Based Organization
+
 - Related code is grouped by feature (auth, movies, booking, events)
 - Each feature has its own components, services, hooks, and types
 - Easy to find and maintain related code
 
 ### 2. Service Layer
+
 - Centralized API client (`shared/services/api/client.ts`)
 - Feature-specific services (movieService, bookingService, authService)
 - Ready for backend integration
 - Currently uses static data/Supabase as fallback
 
 ### 3. Shared Resources
+
 - Common components in `shared/components`
 - Reusable utilities in `shared/utils`
 - Centralized types in `shared/types`
 - Constants in `shared/constants`
 
 ### 4. Clean Separation of Concerns
+
 - Business logic in services
 - UI in components
 - State management in hooks/contexts
@@ -117,24 +121,24 @@ Use the `@/` alias for imports:
 
 ```typescript
 // Shared components
-import { Button } from '@/shared/components/ui/button';
-import Header from '@/shared/components/layout/Header';
+import { Button } from "@/shared/components/ui/button";
+import Header from "@/shared/components/layout/Header";
 
 // Feature components
-import MovieCard from '@/features/movies/components/MovieCard';
+import MovieCard from "@/features/movies/components/MovieCard";
 
 // Services
-import { movieService } from '@/features/movies/services/movieService';
+import { movieService } from "@/features/movies/services/movieService";
 
 // Types
-import type { Movie } from '@/shared/types/common';
+import type { Movie } from "@/shared/types/common";
 
 // Constants
-import { ROUTES } from '@/shared/constants/routes';
-import { APP_CONFIG } from '@/shared/constants/config';
+import { ROUTES } from "@/shared/constants/routes";
+import { APP_CONFIG } from "@/shared/constants/config";
 
 // Utils
-import { formatCurrency } from '@/shared/utils/formatters';
+import { formatCurrency } from "@/shared/utils/formatters";
 ```
 
 ## 🚀 Backend Integration
@@ -149,7 +153,7 @@ export const movieService = {
   async getMovies() {
     // Uncomment when backend is ready:
     // return await apiClient.get<Movie[]>(API_ENDPOINTS.MOVIES.LIST);
-    
+
     // Temporary: Return static data
     return { data: staticMovies, success: true };
   },
