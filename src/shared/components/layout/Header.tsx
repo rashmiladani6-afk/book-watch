@@ -3,9 +3,6 @@ import { Search, User, LogOut, MapPin, X, Mail, ArrowLeft } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
-// Remove Supabase imports
-// import { useAuth as useSupabaseAuth } from "@/contexts/AuthContext";
-// import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Label } from "@/shared/components/ui/label";
 import {
@@ -172,6 +169,8 @@ const Header = ({ onSearch }: HeaderProps) => {
     toast.info("Apple sign-in coming soon!");
   };
 
+  // (theme toggle removed)
+
   // Updated: Use custom API auth
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -315,6 +314,8 @@ const Header = ({ onSearch }: HeaderProps) => {
           >
             <Search className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
+
+          {/* theme toggle removed */}
 
           {/* City Select Button */}
           <Button

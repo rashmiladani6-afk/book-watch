@@ -22,6 +22,16 @@ export interface PaginatedResponse<T> {
     hasMore: boolean;
 }
 
+/**
+ * Dwaaro events API response shape
+ */
+export interface EventsMeta {
+    limit: number;
+    offset: number;
+    total: number;
+    has_more: boolean;
+}
+
 export interface ApiRequestConfig {
     headers?: Record<string, string>;
     params?: Record<string, any>;

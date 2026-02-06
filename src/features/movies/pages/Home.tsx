@@ -8,8 +8,14 @@ import TimerCarousel from "@/shared/components/common/TimerCarousel";
 import { Button } from "@/shared/components/ui/button";
 import { ChevronRight, ChevronLeft, ChevronDown, Briefcase, Film, Trophy, Music, Search } from "lucide-react";
 import { Facebook, Twitter, Instagram, Youtube } from "lucide-react";
+import { useEvents } from "@/features/events/hooks/useEvents";
+import { useEventTypes } from "@/features/events/hooks/useEventTypes";
+import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "react-router-dom";
+import { generateRoute } from "@/shared/constants/routes";
 
-import playButton from "../assest/image/play button/Watch new moives at home, ever Friday (3).png";
+// TODO: If needed, import play button asset from the centralized assets path:
+// import playButton from "@/assets/image/play-button/Watch-new-movies-at-home-every-Friday-3.png";
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
@@ -218,6 +224,12 @@ const Home = () => {
   const trendingAppsRef = useRef<HTMLDivElement>(null);
   const featuredGamesRef = useRef<HTMLDivElement>(null);
   const mustWatchRef = useRef<HTMLDivElement>(null);
+
+  // Live events from Dwaaro API
+  const { user, loading: authLoading } = useAuth();
+  const { data: eventsData } = useEvents({ limit: 8, offset: 0 });
+  const { data: typesData } = useEventTypes({ limit: 50, offset: 0 });
+  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -469,7 +481,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* POPULAR EVENTS - Microsoft Store Style */}
+      {/* POPULAR EVENTS - Microsoft Store Style (uses Events API if available) */}
       <section className="py-8 bg-[#F5F5F5]">
         <div className="container">
           <div className="flex items-center justify-between mb-6">
@@ -480,38 +492,67 @@ const Home = () => {
           </div>
 
           {/* Grid Layout - 2 columns */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              {typesData && (
+                <select
+                  value={selectedTypeId ?? ""}
+                  onChange={(e) => setSelectedTypeId(e.target.value ? Number(e.target.value) : null)}
+                  className="rounded-md border px-3 py-1 text-sm"
+                >
+                  <option value="">All types</option>
+                  {typesData.data.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {allMovies.filter(m => ["5", "6", "9", "10", "7", "8", "4", "11"].includes(m.id)).slice(0, 8).map((movie) => (
-              <div
-                key={movie.id}
-                onClick={() => window.location.href = `/movie/${movie.id}`}
-                className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.01]"
+            {(!user ? [] : ((eventsData?.data ?? []).filter(ev => !selectedTypeId || ev.category_id?.id === selectedTypeId))).slice(0, 8).map((event) => {
+              const city = event.venue?.city || "";
+              const country = event.country_id?.name || "";
+              const location =
+                city && country ? `${city}, ${country}` : city || country || "Online";
+
+            return (
+              <Link
+                key={event.id}
+                to={generateRoute.eventDetail(event.id)}
+                className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.01]"
               >
                 {/* Event Icon */}
                 <div className="flex-none w-20 h-20 bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-md">
-                  {movie.title.charAt(0)}
+                  {event.name.charAt(0)}
                 </div>
 
                 {/* Event Info */}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-md text-[#3E2723] truncate mb-1">
-                    {movie.title}
+                    {event.name}
                   </h3>
-                  <p className="text-sm text-gray-600 mb-1 capitalize">
-                    {movie.type === 'movies' ? movie.genre[0] : movie.type}
+                  <p className="text-sm text-gray-600 mb-1 capitalize line-clamp-1">
+                    {location}
+                  </p>
+                  <p className="text-xs text-gray-500 line-clamp-1">
+                    {event.start_date} → {event.end_date}
                   </p>
                 </div>
 
-                {/* Price */}
+                {/* Price (first ticket) */}
                 <div className="flex-none text-right">
                   <p className="text-md font-semibold text-[#3E2723]">
-                    {movie.theaters && movie.theaters[0]?.showTimes[0]
-                      ? `₹ ${movie.theaters[0].showTimes[0].price}.00`
-                      : 'Free'}
+                    {event.tickets_type?.[0]
+                      ? `₹ ${event.tickets_type[0].price}`
+                      : "See details"}
                   </p>
                 </div>
-              </div>
-            ))}
+              </Link>
+            );
+          })}
           </div>
         </div>
       </section>

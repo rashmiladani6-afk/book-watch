@@ -2,16 +2,16 @@
 
 ## 📁 New Folder Organization
 
-This project has been restructured with a clean, feature-based architecture optimized for backend integration.
+This project uses a clean, feature-based architecture optimized for backend integration.
 
 ### Directory Structure
 
 ```
 src/
-├── app/                          # Application setup
-│   ├── App.tsx                   # Main app component
-│   ├── routes.tsx                # Route definitions
-│   └── providers.tsx             # Context providers wrapper
+├── app/                          # Application shell
+│   ├── App.tsx                   # Main app component (used by main.tsx)
+│   ├── routes.tsx                # Central route definitions (AppRoutes)
+│   └── providers.tsx             # Global providers (Router, React Query, Auth, Toasts)
 │
 ├── features/                     # Feature-based modules
 │   ├── auth/                     # Authentication feature
@@ -68,22 +68,22 @@ src/
 │       ├── config.ts
 │       └── messages.ts
 │
-├── contexts/                     # React contexts
-│   └── AuthContext.tsx
+├── contexts/                     # React contexts (global app state)
+│   └── AuthContext.tsx           # Lightweight auth context using localStorage
 │
-├── lib/                          # External integrations
-│   └── supabase/
-│       ├── client.ts
-│       └── types.ts
+├── lib/                          # External integrations & generated clients
+│   └── supabase/                 # Supabase typed client (used by bookingService)
+│       ├── client.ts             # createClient + auth/session config
+│       └── types.ts              # Generated Database types
 │
-├── data/                         # Static data (temporary)
-│   └── *.ts                      # Will be replaced by API calls
+├── data/                         # Static data (temporary, used as fallback)
+│   └── *.ts                      # Movies, events, activities, etc.
 │
 ├── styles/                       # Global styles
 │   ├── index.css
 │   └── App.css
 │
-└── main.tsx                      # Entry point
+└── main.tsx                      # Vite entry point (mounts app/App.tsx)
 ```
 
 ## 🎯 Key Features
@@ -141,11 +141,27 @@ import { APP_CONFIG } from "@/shared/constants/config";
 import { formatCurrency } from "@/shared/utils/formatters";
 ```
 
+Backend / services imports:
+
+```typescript
+// API client
+import { apiClient } from "@/shared/services/api/client";
+import { API_ENDPOINTS } from "@/shared/services/api/endpoints";
+
+// Supabase client
+import { supabase } from "@/lib/supabase/client";
+
+// Feature services
+import { movieService } from "@/features/movies/services/movieService";
+import { bookingService } from "@/features/booking/services/bookingService";
+import { authService } from "@/features/auth/services/authService";
+```
+
 ## 🚀 Backend Integration
 
 ### Service Layer Structure
 
-Each service is ready for backend integration:
+Each service is ready for backend integration, currently using static data/Supabase as fallback:
 
 ```typescript
 // Example: movieService.ts
@@ -156,6 +172,18 @@ export const movieService = {
 
     // Temporary: Return static data
     return { data: staticMovies, success: true };
+  },
+};
+
+// Example: bookingService.ts
+export const bookingService = {
+  async createBooking(bookingData: BookingData) {
+    // Future:
+    // return await apiClient.post(API_ENDPOINTS.BOOKINGS.CREATE, bookingData);
+
+    // Current: store in Supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    // ...insert into bookings table...
   },
 };
 ```
@@ -228,13 +256,28 @@ npm run lint
 - ✅ Service layer implemented
 - ✅ Components organized by feature
 - ✅ Pages moved to features
-- ⏳ Import paths being updated
-- ⏳ Testing in progress
+- ✅ Import paths updated to use `@/` alias
+- ⏳ Testing in progress (end-to-end flows)
 
 ## 📚 Next Steps
 
-1. Update all import paths in components
-2. Test application functionality
-3. Integrate with backend API
-4. Remove static data files
-5. Add comprehensive tests
+1. Test application functionality end-to-end
+2. Integrate with real backend API (replace static data usage)
+3. Gradually remove static data files from `src/data`
+4. Add comprehensive tests (unit + integration)
+
+## 🗺️ High-Level App Flow (Mermaid)
+
+```mermaid
+flowchart TD
+  mainTsx["main.tsx"] --> appApp["app/App.tsx"]
+  appApp --> providers["app/providers.tsx"]
+  appApp --> routes["app/routes.tsx"]
+  routes --> moviesPages["features/movies/pages"]
+  routes --> bookingPages["features/booking/pages"]
+  routes --> authPages["features/auth/pages"]
+  appApp --> sharedLayout["shared/components/layout"]
+  appApp --> contexts["contexts/AuthContext.tsx"]
+```
+
+Aa diagram ma tame joi shako cho ke application `main.tsx` thi start thai ne, `app/App.tsx`, global `Providers`, central `Routes`, ane pachi alag-alag **feature pages** sudhi flow kare chhe.

@@ -6,20 +6,45 @@ Ae project ek **Movie/Event Booking System** chhe, jene **BookMyShow** jovi func
 
 ---
 
-## 📁 Project Structure Explanation
+## 📁 Project Structure Explanation (Top Level)
 
 ### 1. **Main Entry Point Files**
 
 #### `main.tsx` - Application Start Kare
 ```typescript
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import "./index.css";
+import App from "./app/App";
+import "./styles/index.css";
 ```
-- Ae file application nu **starting point** chhe
+- Aa file application nu **starting point** chhe
 - `createRoot` thi React app DOM ma mount thay chhe
-- `App.tsx` component load thay chhe
-- CSS styling apply thay chhe
+- `app/App.tsx` main App component load thay chhe
+- Global CSS `src/styles/index.css` thi apply thay chhe
+
+---
+
+### 2. **`src/app` Folder - Shell & Routing**
+
+Aa folder ma tamaru **application nu main shell** chhe.
+
+- `app/App.tsx`
+  - Aa main layout chhe:
+  - `<Providers>` wrap kare chhe (React Query, Router, Auth, Toasts)
+  - Left side ma `VerticalSidebar`
+  - Right side ma `<AppRoutes />` (badha pages na routes)
+- `app/providers.tsx`
+  - `QueryClientProvider` (TanStack Query)
+  - `BrowserRouter`
+  - `AuthProvider`
+  - `TooltipProvider`, `Toaster`, `Sonner`
+- `app/routes.tsx`
+  - Badha routes ek jagya par define:
+    - `/` → `features/movies/pages/Home`
+    - `/movie/:id` → `features/movies/pages/MovieDetail`
+    - `/ticket/:id` → `features/booking/pages/TicketBook`
+    - `/book/:showId` → `features/booking/pages/SeatSelection`
+    - `/payment` → `features/booking/pages/Payment`
+    - `*` → `pages/NotFound`
 
 ---
 
@@ -62,9 +87,9 @@ const App = () => (
 
 ---
 
-### 3. **Pages Directory - Different Pages Nu Structure**
+### 3. **Feature Folders - Movies & Booking**
 
-#### **Home.tsx** - Main Landing Page
+#### **`features/movies/pages/Home.tsx`** - Main Landing Page
 ```typescript
 const [selectedCategory, setSelectedCategory] = useState<ContentType | 'all'>('all');
 const [searchQuery, setSearchQuery] = useState('');
@@ -108,7 +133,7 @@ const [fullName, setFullName] = useState('');
 
 ---
 
-#### **MovieDetail.tsx** - Movie Details Page
+#### **`features/movies/pages/MovieDetail.tsx`** - Movie Details Page
 ```typescript
 const { id } = useParams();
 const movie = movies.find((m) => m.id === id);
@@ -131,7 +156,7 @@ const movie = movies.find((m) => m.id === id);
 
 ---
 
-#### **SeatSelection.tsx** - Seat Booking Page
+#### **`features/booking/pages/SeatSelection.tsx`** - Seat Booking Page
 ```typescript
 type SeatStatus = "available" | "selected" | "booked";
 interface Seat {
@@ -167,7 +192,7 @@ interface Seat {
 
 ---
 
-#### **Payment.tsx** - Payment Processing Page
+#### **`features/booking/pages/Payment.tsx`** - Payment Processing Page
 ```typescript
 const bookingData = location.state;
 ```
@@ -193,9 +218,9 @@ const bookingData = location.state;
 
 ---
 
-### 4. **Components Directory - Reusable Components**
+### 4. **Shared Components & Layout**
 
-#### **Header.tsx** - Navigation Header
+#### **`shared/components/layout/Header.tsx`** - Navigation Header
 ```typescript
 const [searchQuery, setSearchQuery] = useState("");
 ```
@@ -215,7 +240,7 @@ const [searchQuery, setSearchQuery] = useState("");
 
 ---
 
-#### **MovieCard.tsx** - Movie Card Component
+#### **`features/movies/components/MovieCard.tsx`** - Movie Card Component
 ```typescript
 <Link to={`/movie/${movie.id}`}>
 ```
@@ -235,7 +260,7 @@ const [searchQuery, setSearchQuery] = useState("");
 
 ### 5. **Contexts Directory - State Management**
 
-#### **AuthContext.tsx** - Authentication Context
+#### **`contexts/AuthContext.tsx`** - Authentication Context
 ```typescript
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -256,7 +281,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 ---
 
-### 6. **Data Directory - Static Data**
+### 6. **Data Directory - Static Data (`src/data`)**
 
 #### **movies.ts** - Movies Data
 ```typescript
@@ -294,9 +319,9 @@ export const movies: Movie[] = [
 
 ---
 
-### 7. **Integrations Directory - External Services**
+### 7. **Lib & Services - External Services**
 
-#### **supabase/client.ts** - Supabase Client
+#### **`lib/supabase/client.ts`** - Supabase Client (Typed)
 ```typescript
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -308,58 +333,54 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 ```
 
 **Kya kare chhe:**
-1. **Supabase Connection**: Supabase backend thi connection establish kare
-2. **Authentication Config**: 
-   - LocalStorage ma session store kare
-   - Auto token refresh kare
-3. **Database Access**: Database queries mate client provide kare
+1. **Supabase Connection**: Supabase backend sathe connection banave chhe
+2. **Auth Config**: LocalStorage ma session store + auto token refresh
+3. **Booking Service**: `features/booking/services/bookingService.ts` ahi no client use kare chhe
 
 ---
 
-### 8. **Database Structure (Supabase Migrations)**
+### 8. **Events API Flow (Dwaaro)**
 
-#### **profiles Table**
-```sql
-CREATE TABLE public.profiles (
-  id UUID PRIMARY KEY,
-  user_id UUID NOT NULL UNIQUE,
-  email TEXT NOT NULL,
-  full_name TEXT,
-  phone TEXT,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
-);
+Ae project ma **live events** data Dwaaro ni API thi aave chhe:
+
+```text
+EventsList.tsx → useEvents hook → eventService.getEvents()
+→ GET /api/v1/odoo/events (Bearer token)
+→ JSON response (events list) → UI cards
 ```
-- User profile information store kare
-- Signup par auto create thay (trigger use kare)
 
-#### **bookings Table**
-```sql
-CREATE TABLE public.bookings (
-  id UUID PRIMARY KEY,
-  user_id UUID NOT NULL,
-  movie_title TEXT NOT NULL,
-  theater_name TEXT NOT NULL,
-  show_time TEXT NOT NULL,
-  show_date TEXT NOT NULL,
-  seats JSONB NOT NULL,
-  total_amount DECIMAL(10,2) NOT NULL,
-  payment_status TEXT DEFAULT 'pending',
-  booking_status TEXT DEFAULT 'confirmed',
-  created_at TIMESTAMP
-);
-```
-- User bookings store kare
-- Seat information JSONB format ma
-- Payment ane booking status track kare
+- `features/events/services/eventService.ts`  
+  - Axios thi `https://dwaaro.axenorsuite.com/api/v1/odoo/events` call kare (proxy base `/api/v1/odoo`)  
+  - Header ma **Bearer token** muki ne secure request kare chhe  
+- `features/events/hooks/useEvents.ts`  
+  - TanStack Query use kari events fetch + cache kare chhe (`useQuery`)  
+- `features/events/pages/EventsList.tsx`  
+  - API thi avela events ne nice cards ma show kare chhe (name, date, location, tags, price)
+- `features/movies/pages/Home.tsx` ma \"Popular events\" section ma pan aa API no data use thay chhe (top 8 events).
 
-**Row Level Security (RLS)**:
-- Users only apna data access karvi shake
-- Policies define karelu chhe security mate
+Viva ma tame kahi shako:\n> \"User events page khole to `useEvents` hook React Query thi Dwaaro events API ne call kare chhe, JSON data aave chhe ane apde cards ma real events show kariye chhiye.\"
 
 ---
 
-## 🔄 Complete User Flow (Step by Step)
+### 9. **Event Detail Flow (Gujenglish)**
+
+Events mate pan movie-detail jevo j **detail page** chhe:
+
+```text
+EventsList/Home Popular events → See details click
+→ /events/:id route → EventDetail.tsx
+→ useEvent(id) hook → eventService.getEventById(id)
+→ Dwaaro events API data → Full detail UI (date, venue, tickets)
+```
+
+- Header ma: title, start/end date, location, organizer, category ane tags chips show thay chhe.  
+- Side panel ma: badha **ticket types** (Standard, VIP, etc.) name + price sathe list thay chhe ane \"Starting from ₹minPrice\" pan dekhay chhe.  
+- Aa flow tame viva ma aavu kahi samjavi shako:  
+  > \"User `See details` par click kare to URL ma `/events/{id}` ave chhe, `useEvent` hook Dwaaro events API thi specific event fetch kare chhe, ane EventDetail page ma date, venue, tags, tickets badhu nicely design thai ne dekhaay chhe.\"
+
+---
+
+### 10. **Complete User Flow (Step by Step)**
 
 ### **1. User Registration/Login**
 ```
@@ -368,22 +389,22 @@ User → /auth page → Sign Up/Sign In → Supabase Auth → Session Create →
 
 ### **2. Browse Movies**
 ```
-User → Home Page → Category Filter/Search → Movie List Display → Click Movie Card
+User → Home Page (`features/movies/pages/Home`) → Category Filter/Search → Movie List Display → Click Movie Card
 ```
 
 ### **3. View Movie Details**
 ```
-User → /movie/:id → Movie Details → Select Show Time → Click Book Button
+User → /movie/:id → Movie Details (`features/movies/pages/MovieDetail`) → Select Show Time → Click Book Button
 ```
 
 ### **4. Select Seats**
 ```
-User → /book/:showId → Seat Layout → Select Seats → View Summary → Proceed to Pay
+User → /book/:showId → Seat Layout (`features/booking/pages/SeatSelection`) → Select Seats → View Summary → Proceed to Pay
 ```
 
 ### **5. Payment**
 ```
-User → /payment → Review Booking → Click Pay Now → Payment Process → Database Save → Success Screen
+User → /payment (`features/booking/pages/Payment`) → Review Booking → Click Pay Now → Demo Payment Process → Success Screen
 ```
 
 ---
@@ -433,8 +454,23 @@ User → /payment → Review Booking → Click Pay Now → Payment Process → D
 
 ### **Component Rendering Flow:**
 ```
-main.tsx → App.tsx → Router → Page Component → Child Components
+main.tsx → app/App.tsx → AppRoutes → Feature Page Components → Child Components
 ```
+
+### **Feature-wise Folder Mapping (Gujenglish)**
+
+- **Auth Feature**: `src/features/auth`  
+  - `services/authService.ts` → OTP login/verify API calls  
+  - `hooks/useAuth.tsx` → Auth API + state handling  
+- **Movies Feature**: `src/features/movies`  
+  - `pages/Home.tsx`, `pages/MovieDetail.tsx` → UI + flow  
+  - `components/MovieCard.tsx` → Reusable movie card  
+  - `services/movieService.ts` → Movies data (currently static `src/data/movies.ts`)  
+- **Booking Feature**: `src/features/booking`  
+  - `pages/TicketBook.tsx`, `pages/SeatSelection.tsx`, `pages/Payment.tsx`  
+  - `services/bookingService.ts` → Booking create/list (Supabase ready)  
+- **Shared**: `src/shared`  
+  - Layout (`Header.tsx`, `VerticalSidebar.tsx`), shadcn UI, utils, constants, types, API client
 
 ### **State Management Flow:**
 ```
@@ -469,18 +505,20 @@ Database (Supabase) → API Calls → State Updates → UI Updates
 
 ---
 
-## 📚 File Organization Summary
+## 📚 File Organization Summary (New)
 
-```
+``` 
 src/
-├── pages/          → Main page components
-├── components/     → Reusable UI components
-├── contexts/       → React Context providers
-├── data/           → Static data files
-├── hooks/          → Custom React hooks
-├── integrations/   → External services (Supabase)
-├── lib/            → Utility functions
-└── App.tsx         → Main app component
+├── app/            → Main shell (`App.tsx`), routes, providers
+├── features/       → Feature-wise code (auth, movies, booking, events)
+├── shared/         → Common layout, UI, utils, constants, types, API client
+├── contexts/       → Global contexts (e.g. `AuthContext.tsx`)
+├── data/           → Static data (movies, events) as temporary backend
+├── hooks/          → Custom hooks (e.g. `useAuth`, `use-mobile`)
+├── lib/            → External integrations (e.g. `supabase` client)
+├── pages/          → Only fallback/NotFound legacy pages
+├── styles/         → Global styles (Tailwind & app CSS)
+└── main.tsx        → Entry file mounting `app/App.tsx`
 ```
 
 ---

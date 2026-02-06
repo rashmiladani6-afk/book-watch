@@ -9,6 +9,7 @@ import {
   Menu,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { ROUTES } from "@/shared/constants/routes";
 import type { ReactNode } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/shared/components/ui/sheet";
 import { Button } from "@/shared/components/ui/button";
@@ -22,13 +23,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: "home", name: "Home", icon: <Home size={18} />, path: "/" },
-  { id: "movies", name: "Movies", icon: <Film size={18} />, path: "/", category: "movies" },
-  { id: "events", name: "Events", icon: <Calendar size={18} />, path: "/", category: "events" },
-  { id: "plays", name: "Plays", icon: <Theater size={18} />, path: "/", category: "plays" },
-  { id: "sports", name: "Sports", icon: <Trophy size={18} />, path: "/", category: "sports" },
-  { id: "activities", name: "Activities", icon: <Activity size={18} />, path: "/", category: "activities" },
-  { id: "stream", name: "Stream", icon: <Tv size={18} />, path: "/", category: "stream" },
+  { id: "home", name: "Home", icon: <Home size={18} />, path: ROUTES.HOME },
+  { id: "movies", name: "Movies", icon: <Film size={18} />, path: ROUTES.HOME, category: "movies" },
+  { id: "events", name: "Events", icon: <Calendar size={18} />, path: ROUTES.EVENTS, category: "events" },
+  // Category shortcuts (go to events list filtered by type id)
+  { id: "exhibition", name: "Exhibition", icon: <Theater size={18} />, path: "/events/list?type=1" },
+  { id: "training", name: "Training", icon: <Activity size={18} />, path: "/events/list?type=2" },
+  { id: "sport", name: "Sports", icon: <Trophy size={18} />, path: "/events/list?type=3" },
+  // { id: "stream", name: "Stream", icon: <Tv size={18} />, path: ROUTES.HOME, category: "stream" },
 ];
 
 const VerticalSidebar = () => {

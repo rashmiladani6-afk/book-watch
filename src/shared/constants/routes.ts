@@ -6,6 +6,8 @@ export const ROUTES = {
     MOVIE_DETAIL: '/movie/:id',
     TICKET_BOOK: '/ticket/:id',
     SEAT_SELECTION: '/book/:showId',
+    EVENTS: '/events',
+    EVENT_DETAIL: '/events/:id',
     AUTH: '/auth',
     PAYMENT: '/payment',
     NOT_FOUND: '*',
@@ -18,4 +20,5 @@ export const generateRoute = {
     movieDetail: (id: string) => `/movie/${id}`,
     ticketBook: (id: string) => `/ticket/${id}`,
     seatSelection: (showId: string) => `/book/${showId}`,
+    eventDetail: (id: number | string) => `/events/${id}`,
 };
