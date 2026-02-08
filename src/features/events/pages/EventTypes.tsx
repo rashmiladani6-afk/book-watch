@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Header from "@/shared/components/layout/Header";
+import Footer from "@/shared/components/layout/Footer";
 import { useEventTypes } from "@/features/events/hooks/useEventTypes";
 import { Card } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
@@ -52,6 +53,8 @@ const EventTypes = () => {
           ))}
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 };

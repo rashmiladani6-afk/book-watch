@@ -2,10 +2,10 @@ import { useParams, Link } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { movies } from "@/data/movies";
 import Header from "@/shared/components/layout/Header";
+import Footer from "@/shared/components/layout/Footer";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Star, Clock, Calendar, Share2, User, ChevronLeft, ChevronRight, X, Play } from "lucide-react";
-import { Facebook, Twitter, Instagram, Youtube } from "lucide-react";
 
 const MovieDetail = () => {
   const { id } = useParams();
@@ -66,29 +66,6 @@ useEffect(() => {
     };
   }, [isTrailerOpen]);
 
-  const [expandedFooterSections, setExpandedFooterSections] = useState({
-    genre: false,
-    help: false,
-    language: false,
-    cities: false,
-    events: false
-  });
-
-  // ADD FOOTER FUNCTIONS HERE
-  const toggleFooterSection = (section: string) => {
-    setExpandedFooterSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
-
-  const handleSocialClick = (platform: string) => {
-    console.log(`Opening ${platform}...`);
-  };
-
-  const handleFooterLinkClick = (link: string) => {
-    console.log(`Navigating to ${link}...`);
-  };
 
   // Get similar movies
   const similarMovies = movies
@@ -643,163 +620,7 @@ useEffect(() => {
         </section>
       )}
 
-      {/* FOOTER */}
-      <footer className="bg-[#333338] text-gray-300">
-        <div className="container py-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 text-xs">
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">MOVIES NOW SHOWING</h3>
-              <ul className="space-y-1.5">
-                {['Dune: Part Two', 'Oppenheimer', 'The Batman', 'Spider-Man', 'Avatar 2', 'Top Gun Maverick'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">MOVIES BY GENRE</h3>
-              <ul className="space-y-1.5">
-                {['Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Sci-Fi', 'Thriller'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">MOVIES BY LANGUAGE</h3>
-              <ul className="space-y-1.5">
-                {['English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'Bengali'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">MOVIES IN TOP CITIES</h3>
-              <ul className="space-y-1.5">
-                {['Mumbai', 'Delhi-NCR', 'Bangalore', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    Movies in {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">HELP & SUPPORT</h3>
-              <ul className="space-y-1.5">
-                {['About Us', 'Contact Us', 'FAQs', 'Terms & Conditions', 'Privacy Policy', 'Careers'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 text-xs">
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">EVENTS</h3>
-              <ul className="space-y-1.5">
-                {['Live Events', 'Concerts', 'Comedy Shows', 'Workshops', 'Exhibitions'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">PLAYS</h3>
-              <ul className="space-y-1.5">
-                {['Theatre in Mumbai', 'Theatre in Delhi', 'Theatre in Bangalore', 'Theatre in Chennai'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">SPORTS</h3>
-              <ul className="space-y-1.5">
-                {['Cricket', 'Football', 'Badminton', 'Tennis', 'Basketball'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">ACTIVITIES</h3>
-              <ul className="space-y-1.5">
-                {['Adventure Sports', 'Gaming Zones', 'Water Parks', 'Amusement Parks'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-3 text-sm">STREAM</h3>
-              <ul className="space-y-1.5">
-                {['Premiere', 'Rentals', 'New Releases', 'Popular'].map(item => (
-                  <li key={item} onClick={() => handleFooterLinkClick(item)} className="cursor-pointer hover:text-white transition-colors">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-600 my-6"></div>
-
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
-            <div className="text-gray-400">
-              © 2025 Book&Watch. All Rights Reserved.
-            </div>
-
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => handleSocialClick('Facebook')}
-                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
-                aria-label="Facebook"
-              >
-                <Facebook className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleSocialClick('Twitter')}
-                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
-                aria-label="Twitter"
-              >
-                <Twitter className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleSocialClick('Instagram')}
-                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
-                aria-label="Instagram"
-              >
-                <Instagram className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleSocialClick('YouTube')}
-                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
-                aria-label="YouTube"
-              >
-                <Youtube className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { Card } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import Header from "@/shared/components/layout/Header";
+import Footer from "@/shared/components/layout/Footer";
 import { Link } from "react-router-dom";
 import { generateRoute } from "@/shared/constants/routes";
 
@@ -169,6 +170,8 @@ const EventsList = () => {
           })}
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 };
