@@ -476,7 +476,7 @@ const Home = () => {
                   className="rounded-md border px-3 py-1 text-sm"
                 >
                   <option value="">All types</option>
-                  {typesData.data.map((t) => (
+                  {typesData?.data?.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
                     </option>
