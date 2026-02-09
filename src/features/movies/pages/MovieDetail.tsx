@@ -16,44 +16,44 @@ const MovieDetail = () => {
   const [isTrailerOpen, setIsTrailerOpen] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
-const [isReviewHovering, setIsReviewHovering] = useState(false);
-const reviewCarouselRef = useRef(null);
-const reviews = movie?.reviews || [];
-const scrollReviewPrev = () => {
-  setCurrentReviewIndex((prev) => (prev === 0 ? reviews.length - 1 : prev - 1));
-};
+  const [isReviewHovering, setIsReviewHovering] = useState(false);
+  const reviewCarouselRef = useRef(null);
+  const reviews = movie?.reviews || [];
+  const scrollReviewPrev = () => {
+    setCurrentReviewIndex((prev) => (prev === 0 ? reviews.length - 1 : prev - 1));
+  };
 
-const scrollReviewNext = () => {
-  setCurrentReviewIndex((prev) => (prev >= reviews.length - 1 ? 0 : prev + 1));
-};
+  const scrollReviewNext = () => {
+    setCurrentReviewIndex((prev) => (prev >= reviews.length - 1 ? 0 : prev + 1));
+  };
   if (!movie) {
     return <div>Movie not found</div>;
   }
-// Auto-scroll review carousel
-useEffect(() => {
-  if (isReviewHovering || reviews.length === 0) return;
+  // Auto-scroll review carousel
+  useEffect(() => {
+    if (isReviewHovering || reviews.length === 0) return;
 
-  const interval = setInterval(() => {
-    setCurrentReviewIndex((prevIndex) => {
-      const maxIndex = reviews.length - 1;
-      return prevIndex >= maxIndex ? 0 : prevIndex + 1;
-    });
-  }, 4000); // 4 seconds per review
+    const interval = setInterval(() => {
+      setCurrentReviewIndex((prevIndex) => {
+        const maxIndex = reviews.length - 1;
+        return prevIndex >= maxIndex ? 0 : prevIndex + 1;
+      });
+    }, 4000); // 4 seconds per review
 
-  return () => clearInterval(interval);
-}, [isReviewHovering, reviews.length]);
+    return () => clearInterval(interval);
+  }, [isReviewHovering, reviews.length]);
 
-// Scroll to current review index
-useEffect(() => {
-  if (reviewCarouselRef.current) {
-    const scrollWidth = reviewCarouselRef.current.scrollWidth;
-    const itemWidth = scrollWidth / reviews.length;
-    reviewCarouselRef.current.scrollTo({
-      left: itemWidth * currentReviewIndex,
-      behavior: 'smooth'
-    });
-  }
-}, [currentReviewIndex, reviews.length]);
+  // Scroll to current review index
+  useEffect(() => {
+    if (reviewCarouselRef.current) {
+      const scrollWidth = reviewCarouselRef.current.scrollWidth;
+      const itemWidth = scrollWidth / reviews.length;
+      reviewCarouselRef.current.scrollTo({
+        left: itemWidth * currentReviewIndex,
+        behavior: 'smooth'
+      });
+    }
+  }, [currentReviewIndex, reviews.length]);
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isTrailerOpen) {
@@ -138,8 +138,8 @@ useEffect(() => {
     const [imageError, setImageError] = useState(false);
 
     return (
-      <Link 
-        to={`/movie/${movie.id}`} 
+      <Link
+        to={`/movie/${movie.id}`}
         className="group flex-shrink-0 w-[150px] sm:w-[180px] md:w-[200px] mx-1 sm:mx-2"
         onClick={() => window.scrollTo(0, 0)}
       >
@@ -158,7 +158,7 @@ useEffect(() => {
               </div>
             )}
           </div>
-          
+
           <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-sm rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 flex items-center gap-0.5 sm:gap-1">
             <Star className="h-3 w-3 sm:h-4 sm:w-4 fill-yellow-400 text-yellow-400" />
             <span className="text-white font-semibold text-xs sm:text-sm">{movie.rating}</span>
@@ -231,8 +231,8 @@ useEffect(() => {
 
                 <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
                   {movie.genre.map((g) => (
-                    <span 
-                      key={g} 
+                    <span
+                      key={g}
                       className="bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white border border-white/30 text-base sm:text-base px-4 sm:px-4 py-2 rounded-lg font-medium transition-colors"
                     >
                       {g}
@@ -265,14 +265,14 @@ useEffect(() => {
 
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Link to={`/ticket/${movie.id}`}>
-                    <Button 
+                    <Button
                       className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white py-4 sm:py-5 px-8 sm:px-12 font-bold text-lg sm:text-lg rounded-xl shadow-2xl hover:shadow-red-600/50 transition-all"
                     >
                       Book Tickets
                     </Button>
                   </Link>
 
-                  <Button 
+                  <Button
                     onClick={() => setIsTrailerOpen(true)}
                     className="w-full sm:w-auto bg-white/10 hover:bg-white/20 border-2 border-white/50 backdrop-blur-sm text-white py-4 sm:py-5 px-6 sm:px-10 font-bold text-lg sm:text-lg rounded-xl shadow-2xl hover:shadow-white/20 transition-all flex items-center justify-center gap-2"
                   >
@@ -288,21 +288,21 @@ useEffect(() => {
 
       {/* PROFESSIONAL TRAILER MODAL - YOUTUBE STYLE */}
       {isTrailerOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-0 sm:p-4 animate-in fade-in duration-200"
           onClick={() => setIsTrailerOpen(false)}
         >
           {/* Modal Container */}
-          <div 
+          <div
             className="relative w-full h-full sm:h-auto sm:max-w-7xl bg-black sm:rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top Bar with Close Button */}
             <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-3 sm:p-4 bg-gradient-to-b from-black/80 to-transparent">
               <div className="flex items-center gap-3">
-                <img 
-                  src="/placeholder.svg?height=40&width=40" 
-                  alt="Logo" 
+                <img
+                  src="/placeholder.svg?height=40&width=40"
+                  alt="Logo"
                   className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/10"
                 />
                 <div className="hidden sm:block">
@@ -312,7 +312,7 @@ useEffect(() => {
                   <p className="text-gray-400 text-xs">Official Trailer</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   className="hidden sm:flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg transition-all text-sm font-medium"
@@ -337,7 +337,7 @@ useEffect(() => {
 
             {/* Video Container */}
             <div className="relative w-full h-full sm:h-auto sm:aspect-video bg-black">
-               <iframe
+              <iframe
                 className="w-full h-full"
                 src={`https://www.youtube.com/embed/${movie.trailerUrl}?autoplay=1&rel=0&modestbranding=1&controls=1`}
                 title={`${movie.title} - Official Trailer`}
@@ -355,7 +355,7 @@ useEffect(() => {
                 <p className="text-sm text-gray-400 leading-relaxed">
                   Watch the exciting trailer in full HD quality. Experience the thrill, action, and emotions of this amazing film.
                 </p>
-                
+
                 {/* Additional Info */}
                 <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-500">
                   <span className="flex items-center gap-1">
@@ -416,144 +416,143 @@ useEffect(() => {
         </section>
       )}
 
-{/* REVIEWS SECTION */}
-{/* REVIEWS CAROUSEL SECTION */}
-{reviews.length > 0 && (
-  <section className="py-10 bg-white">
-    <div className="container mx-auto px-4 max-w-7xl">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6 sm:mb-8">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Top Reviews</h2>
-        <button
-          onClick={() => setShowAllReviews(!showAllReviews)}
-          className="text-red-500 hover:text-red-600 font-semibold flex items-center gap-1 text-sm sm:text-base"
-        >
-          {showAllReviews ? "Show Carousel" : "View All"} 
-          <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
-        </button>
-      </div>
+      {/* REVIEWS SECTION */}
+      {/* REVIEWS CAROUSEL SECTION */}
+      {reviews.length > 0 && (
+        <section className="py-10 bg-white">
+          <div className="container mx-auto px-4 max-w-7xl">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Top Reviews</h2>
+              <button
+                onClick={() => setShowAllReviews(!showAllReviews)}
+                className="text-red-500 hover:text-red-600 font-semibold flex items-center gap-1 text-sm sm:text-base"
+              >
+                {showAllReviews ? "Show Carousel" : "View All"}
+                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+            </div>
 
-      {/* Conditional: Carousel or Grid */}
-      {showAllReviews ? (
-        // GRID VIEW - All Reviews
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {reviews.map((review, index) => (
-            <div
-              key={index}
-              className="relative rounded-xl p-6 bg-white border shadow hover:shadow-lg transition-shadow"
-            >
-              {/* Quote icon */}
-              <div className="absolute top-4 left-4 text-6xl text-red-200 leading-none">
-                "
-              </div>
+            {/* Conditional: Carousel or Grid */}
+            {showAllReviews ? (
+              // GRID VIEW - All Reviews
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {reviews.map((review, index) => (
+                  <div
+                    key={index}
+                    className="relative rounded-xl p-6 bg-white border shadow hover:shadow-lg transition-shadow"
+                  >
+                    {/* Quote icon */}
+                    <div className="absolute top-4 left-4 text-6xl text-red-200 leading-none">
+                      "
+                    </div>
 
-              {/* Review text */}
-              <p className="text-center text-gray-600 text-sm leading-relaxed mt-6 px-2">
-                {review.comment}
-              </p>
+                    {/* Review text */}
+                    <p className="text-center text-gray-600 text-sm leading-relaxed mt-6 px-2">
+                      {review.comment}
+                    </p>
 
-              {/* Stars */}
-              <div className="flex justify-center gap-1 mt-4 text-yellow-400">
-                {[...Array(Math.round(review.rating / 2))].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-yellow-400" />
+                    {/* Stars */}
+                    <div className="flex justify-center gap-1 mt-4 text-yellow-400">
+                      {[...Array(Math.round(review.rating / 2))].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-yellow-400" />
+                      ))}
+                    </div>
+
+                    {/* User */}
+                    <div className="mt-4 text-center">
+                      <p className="font-semibold uppercase tracking-wide text-gray-800">
+                        {review.user}
+                      </p>
+                      <p className="text-xs text-gray-500">Verified Viewer</p>
+                    </div>
+                  </div>
                 ))}
               </div>
-
-              {/* User */}
-              <div className="mt-4 text-center">
-                <p className="font-semibold uppercase tracking-wide text-gray-800">
-                  {review.user}
-                </p>
-                <p className="text-xs text-gray-500">Verified Viewer</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        // CAROUSEL VIEW
-        <div
-          className="relative"
-          onMouseEnter={() => setIsReviewHovering(true)}
-          onMouseLeave={() => setIsReviewHovering(false)}
-        >
-          {/* Previous Button */}
-          <button
-            onClick={scrollReviewPrev}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 sm:p-3 transition-all duration-300 hover:scale-110 -ml-2 sm:-ml-4"
-            aria-label="Previous review"
-          >
-            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 text-gray-800" />
-          </button>
-
-          {/* Carousel Container */}
-          <div
-            ref={reviewCarouselRef}
-            className="flex overflow-hidden scroll-smooth gap-4 sm:gap-6 px-8 sm:px-10"
-          >
-            {reviews.map((review, index) => (
+            ) : (
+              // CAROUSEL VIEW
               <div
-                key={index}
-                className="flex-shrink-0 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]"
+                className="relative"
+                onMouseEnter={() => setIsReviewHovering(true)}
+                onMouseLeave={() => setIsReviewHovering(false)}
               >
-                <div className="relative rounded-xl p-6 bg-gradient-to-br from-white to-gray-50 border shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-                  {/* Quote icon */}
-                  <div className="absolute top-4 left-4 text-6xl text-red-200 leading-none">
-                    "
-                  </div>
+                {/* Previous Button */}
+                <button
+                  onClick={scrollReviewPrev}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 sm:p-3 transition-all duration-300 hover:scale-110 -ml-2 sm:-ml-4"
+                  aria-label="Previous review"
+                >
+                  <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 text-gray-800" />
+                </button>
 
-                  {/* Review text */}
-                  <p className="text-center text-gray-600 text-sm leading-relaxed mt-8 px-2 min-h-[80px]">
-                    {review.comment}
-                  </p>
+                {/* Carousel Container */}
+                <div
+                  ref={reviewCarouselRef}
+                  className="flex overflow-hidden scroll-smooth gap-4 sm:gap-6 px-8 sm:px-10"
+                >
+                  {reviews.map((review, index) => (
+                    <div
+                      key={index}
+                      className="flex-shrink-0 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]"
+                    >
+                      <div className="relative rounded-xl p-6 bg-gradient-to-br from-white to-gray-50 border shadow-lg hover:shadow-xl transition-all duration-300 h-full">
+                        {/* Quote icon */}
+                        <div className="absolute top-4 left-4 text-6xl text-red-200 leading-none">
+                          "
+                        </div>
 
-                  {/* Stars */}
-                  <div className="flex justify-center gap-1 mt-4 text-yellow-400">
-                    {[...Array(Math.round(review.rating / 2))].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-yellow-400" />
-                    ))}
-                  </div>
+                        {/* Review text */}
+                        <p className="text-center text-gray-600 text-sm leading-relaxed mt-8 px-2 min-h-[80px]">
+                          {review.comment}
+                        </p>
 
-                  {/* User */}
-                  <div className="mt-4 text-center border-t pt-4">
-                    <p className="font-semibold uppercase tracking-wide text-gray-800">
-                      {review.user}
-                    </p>
-                    <p className="text-xs text-gray-500">Verified Viewer</p>
-                  </div>
+                        {/* Stars */}
+                        <div className="flex justify-center gap-1 mt-4 text-yellow-400">
+                          {[...Array(Math.round(review.rating / 2))].map((_, i) => (
+                            <Star key={i} className="w-5 h-5 fill-yellow-400" />
+                          ))}
+                        </div>
+
+                        {/* User */}
+                        <div className="mt-4 text-center border-t pt-4">
+                          <p className="font-semibold uppercase tracking-wide text-gray-800">
+                            {review.user}
+                          </p>
+                          <p className="text-xs text-gray-500">Verified Viewer</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={scrollReviewNext}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 sm:p-3 transition-all duration-300 hover:scale-110 -mr-2 sm:-mr-4"
+                  aria-label="Next review"
+                >
+                  <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-gray-800" />
+                </button>
+
+                {/* Indicator Dots */}
+                <div className="flex justify-center gap-1.5 sm:gap-2 mt-6">
+                  {reviews.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentReviewIndex(index)}
+                      className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${index === currentReviewIndex
+                          ? 'w-6 sm:w-8 bg-red-500'
+                          : 'w-1.5 sm:w-2 bg-gray-300 hover:bg-gray-400'
+                        }`}
+                      aria-label={`Go to review ${index + 1}`}
+                    />
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
           </div>
-
-          {/* Next Button */}
-          <button
-            onClick={scrollReviewNext}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 sm:p-3 transition-all duration-300 hover:scale-110 -mr-2 sm:-mr-4"
-            aria-label="Next review"
-          >
-            <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-gray-800" />
-          </button>
-
-          {/* Indicator Dots */}
-          <div className="flex justify-center gap-1.5 sm:gap-2 mt-6">
-            {reviews.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentReviewIndex(index)}
-                className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
-                  index === currentReviewIndex
-                    ? 'w-6 sm:w-8 bg-red-500'
-                    : 'w-1.5 sm:w-2 bg-gray-300 hover:bg-gray-400'
-                }`}
-                aria-label={`Go to review ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
+        </section>
       )}
-    </div>
-  </section>
-)}
 
 
 
@@ -563,15 +562,15 @@ useEffect(() => {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
             <div className="flex justify-between items-center mb-6 sm:mb-8">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">You might also like</h2>
-              <Link 
-                to="/" 
+              <Link
+                to="/"
                 className="text-red-500 hover:text-red-600 font-semibold flex items-center gap-1 text-sm sm:text-base"
               >
                 View All <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
               </Link>
             </div>
 
-            <div 
+            <div
               className="relative"
               onMouseEnter={() => setIsHovering(true)}
               onMouseLeave={() => setIsHovering(false)}
@@ -606,11 +605,10 @@ useEffect(() => {
                   <button
                     key={index}
                     onClick={() => setCurrentIndex(index)}
-                    className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
-                      index === currentIndex 
-                        ? 'w-6 sm:w-8 bg-red-500' 
+                    className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${index === currentIndex
+                        ? 'w-6 sm:w-8 bg-red-500'
                         : 'w-1.5 sm:w-2 bg-gray-300 hover:bg-gray-400'
-                    }`}
+                      }`}
                     aria-label={`Go to slide ${index + 1}`}
                   />
                 ))}
