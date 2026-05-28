@@ -39,9 +39,21 @@ export default defineConfig({
         target: 'https://dwaaro.axenorsuite.com',
         changeOrigin: true,
         secure: false,
-        configure: (proxy, options) => {
-          proxy.on('proxyReq', (proxyReq, req, res) => {
-            console.log('Proxying:', req.method, req.url);
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            console.log('Proxying (dwaaro):', req.method, req.url);
+          });
+        },
+      },
+      // Dedicated proxy for Garba Town auth endpoints only
+      '/garba-auth': {
+        target: 'https://www.garbatown.com',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/garba-auth/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            console.log('Proxying (garbatown):', req.method, req.url);
           });
         },
       },

@@ -8,11 +8,25 @@ import Footer from "@/shared/components/layout/Footer";
 import TimerCarousel from "@/shared/components/common/TimerCarousel";
 import { Button } from "@/shared/components/ui/button";
 import { ChevronRight, ChevronLeft, ChevronDown, Briefcase, Film, Trophy, Music, Search } from "lucide-react";
-import { useEvents } from "@/features/events/hooks/useEvents";
-import { useEventTypes } from "@/features/events/hooks/useEventTypes";
+import { usePopularEvents } from "@/features/events/hooks/usePopularEvents";
+import type { PopularEvent } from "@/features/events/services/eventService";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import { generateRoute } from "@/shared/constants/routes";
+
+const getPopularEventImageUrl = (image: string | null | undefined) => {
+  if (!image) return null;
+  if (image.startsWith("http://") || image.startsWith("https://")) return image;
+  // Use dev proxy so images load from garbatown.com without CORS issues
+  return `/garba-auth${image.startsWith("/") ? image : `/${image}`}`;
+};
+
+const formatEventDate = (dateStr: string) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr.replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+};
 
 // TODO: If needed, import play button asset from the centralized assets path:
 // import playButton from "@/assets/image/play-button/Watch-new-movies-at-home-every-Friday-3.png";
@@ -225,11 +239,47 @@ const Home = () => {
   const featuredGamesRef = useRef<HTMLDivElement>(null);
   const mustWatchRef = useRef<HTMLDivElement>(null);
 
-  // Live events from Dwaaro API
-  const { user, loading: authLoading } = useAuth();
-  const { data: eventsData } = useEvents({ limit: 8, offset: 0 });
-  const { data: typesData } = useEventTypes({ limit: 50, offset: 0 });
-  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
+  // Popular events from Garba Town API (user-token based)
+  const { user, session, loading: authLoading } = useAuth();
+  const {
+    data: popularEventsData,
+    isLoading: popularEventsLoading,
+    isError: popularEventsError,
+  } = usePopularEvents(
+    session?.access_token,
+    !!user && !!session?.access_token && !authLoading,
+  );
+  const popularEvents = popularEventsData?.data ?? [];
+  const getEventEntryCount = (event: PopularEvent) =>
+    event.attendees_count ?? event.attendee_count ?? event.booked_tickets ?? 0;
+
+  const sortByRatingThenEntries = (events: PopularEvent[]) =>
+    [...events].sort((a, b) => {
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return getEventEntryCount(b) - getEventEntryCount(a);
+    });
+
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - dayOfWeek);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7);
+
+  const weeklyEvents = popularEvents.filter((event) => {
+    if (!event.start_date) return false;
+    const eventDate = new Date(event.start_date.replace(" ", "T"));
+    if (Number.isNaN(eventDate.getTime())) return false;
+    return eventDate >= weekStart && eventDate < weekEnd;
+  });
+
+  const topRatedEvents = sortByRatingThenEntries(
+    weeklyEvents.length > 0 ? weeklyEvents : popularEvents,
+  );
+  const latestAddedEvents = [...popularEvents].sort((a, b) => Number(b.id) - Number(a.id));
+  const showPopularEvents = !!user && popularEvents.length > 0;
+  const showPopularEventsLoading = !!user && popularEventsLoading;
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -381,14 +431,36 @@ const Home = () => {
       <Header onSearch={setSearchQuery} />
 
       {/* TIMER CAROUSEL - Microsoft Store Style */}
-      <TimerCarousel movies={filteredMovies.length ? filteredMovies : allMovies} />
+      <TimerCarousel
+        movies={filteredMovies.length ? filteredMovies : allMovies}
+        eventSlides={topRatedEvents.map((event) => ({
+          id: event.id,
+          title: event.name,
+          image:
+            getPopularEventImageUrl(event.image) ||
+            "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1200&q=80",
+          subtitle: formatEventDate(event.start_date),
+          badge: "Recommended",
+          rating: Number(event.rating ?? 0),
+        }))}
+        sideEventCards={latestAddedEvents.map((event) => ({
+          id: event.id,
+          title: event.name,
+          image:
+            getPopularEventImageUrl(event.image) ||
+            "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1200&q=80",
+          subtitle: formatEventDate(event.start_date),
+          badge: "Latest",
+          rating: Number(event.rating ?? 0),
+        }))}
+      />
 
-      {/* POPULAR MOVIES - Microsoft Store Style */}
+      {/* POPULAR EVENTS — Garba Town popular_events API */}
       <section className="py-8 bg-[#F5F5F5]">
         <div className="container">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-semibold text-[#3E2723] flex items-center gap-2">
-              Popular movies
+              Popular events
               <ChevronRight size={20} />
             </h2>
           </div>
@@ -399,43 +471,94 @@ const Home = () => {
               ref={scrollRef}
               className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide pb-4"
             >
-              {recommendedMovies.slice(0, 10).map((movie, index) => (
-                <div
-                  key={movie.id}
-                  onClick={() => window.location.href = `/movie/${movie.id}`}
-                  className="flex-none w-[300px] bg-white rounded-lg overflow-hidden shadow-md hover:shadow-md cursor-pointer transform hover:scale-[1.02] transition-all duration-200 snap-start"
-                >
-                  {/* Badge */}
-                  {index < 3 && (
-                    <div className="absolute top-2 left-2 z-10">
-                      <span className="px-2 py-1 bg-[#107C10] text-white text-xs font-semibold rounded">
-                        Featured
-                      </span>
+              {showPopularEventsLoading &&
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    key={`popular-event-skeleton-${index}`}
+                    className="flex-none w-[300px] bg-white rounded-lg overflow-hidden shadow-md snap-start animate-pulse"
+                  >
+                    <div className="h-[400px] bg-gray-200" />
+                    <div className="p-3 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-4 bg-gray-200 rounded w-1/3" />
                     </div>
-                  )}
-
-                  {/* Image */}
-                  <div className="relative h-[400px] bg-gray-200">
-                    <img
-                      src={movie.image}
-                      alt={movie.title}
-                      className="w-full h-full object-cover"
-                    />
                   </div>
+                ))}
 
-                  {/* Content */}
-                  <div className="p-3">
-                    <h3 className="font-semibold text-sm text-[#3E2723] mb-1 line-clamp-2 h-10">
-                      {movie.title}
-                    </h3>
-                    <p className="text-sm font-bold text-[#8B5E3C]">
-                      {movie.theaters && movie.theaters[0]?.showTimes[0]
-                        ? `₹ ${movie.theaters[0].showTimes[0].price}.00`
-                        : 'Free'}
-                    </p>
-                  </div>
+              {showPopularEvents &&
+                topRatedEvents.slice(0, 10).map((event: PopularEvent, index) => {
+                  const imageUrl = getPopularEventImageUrl(event.image);
+
+                  return (
+                    <Link
+                      key={event.id}
+                      to={generateRoute.eventDetail(event.id)}
+                      className="flex-none w-[300px] bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 snap-start relative"
+                    >
+                      {index < 3 && (
+                        <div className="absolute top-2 left-2 z-10">
+                          <span className="px-2 py-1 bg-[#107C10] text-white text-xs font-semibold rounded">
+                            Featured
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="relative h-[400px] bg-gray-200">
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={event.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] text-white text-4xl font-bold">
+                            {event.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-3">
+                        <h3 className="font-semibold text-sm text-[#3E2723] mb-1 line-clamp-2 h-10">
+                          {event.name}
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-1 line-clamp-1">
+                          {event.address || event.organizer}
+                        </p>
+                        <p className="text-xs text-gray-400 mb-1">
+                          {formatEventDate(event.start_date)}
+                        </p>
+                        <p className="text-sm font-bold text-[#8B5E3C]">
+                          {event.price ? `₹ ${event.price}` : "See details"}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+
+              {!authLoading && !user && (
+                <div className="flex-none w-full min-w-[280px] max-w-md bg-white rounded-lg shadow-md p-6 snap-start">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Sign in to view popular events from Garba Town.
+                  </p>
+                  <Link to="/auth">
+                    <Button className="bg-[#8B5E3C] hover:bg-[#5C4033] text-white">
+                      Sign in
+                    </Button>
+                  </Link>
                 </div>
-              ))}
+              )}
+
+              {!showPopularEventsLoading && user && popularEventsError && (
+                <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm text-red-600">
+                  Could not load popular events. Please sign out and sign in again.
+                </div>
+              )}
+
+              {!showPopularEventsLoading && user && !popularEventsError && popularEvents.length === 0 && (
+                <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm text-gray-600">
+                  No popular events available right now.
+                </div>
+              )}
             </div>
 
             {/* Scroll Arrows */}
@@ -452,82 +575,6 @@ const Home = () => {
             >
               <ChevronRight className="h-6 w-6 text-gray-800" />
             </button>
-          </div>
-        </div>
-      </section>
-
-      {/* POPULAR EVENTS - Microsoft Store Style (uses Events API if available) */}
-      <section className="py-8 bg-[#F5F5F5]">
-        <div className="container">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-[#3E2723] flex items-center gap-2">
-              Popular events
-              <ChevronRight size={20} />
-            </h2>
-          </div>
-
-          {/* Grid Layout - 2 columns */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              {typesData && (
-                <select
-                  value={selectedTypeId ?? ""}
-                  onChange={(e) => setSelectedTypeId(e.target.value ? Number(e.target.value) : null)}
-                  className="rounded-md border px-3 py-1 text-sm"
-                >
-                  <option value="">All types</option>
-                  {typesData?.data?.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(!user ? [] : ((eventsData?.data ?? []).filter(ev => !selectedTypeId || ev.category_id?.id === selectedTypeId))).slice(0, 8).map((event) => {
-              const city = event.venue?.city || "";
-              const country = event.country_id?.name || "";
-              const location =
-                city && country ? `${city}, ${country}` : city || country || "Online";
-
-            return (
-              <Link
-                key={event.id}
-                to={generateRoute.eventDetail(event.id)}
-                className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.01]"
-              >
-                {/* Event Icon */}
-                <div className="flex-none w-20 h-20 bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-md">
-                  {event.name.charAt(0)}
-                </div>
-
-                {/* Event Info */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-md text-[#3E2723] truncate mb-1">
-                    {event.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-1 capitalize line-clamp-1">
-                    {location}
-                  </p>
-                  <p className="text-xs text-gray-500 line-clamp-1">
-                    {event.start_date} → {event.end_date}
-                  </p>
-                </div>
-
-                {/* Price (first ticket) */}
-                <div className="flex-none text-right">
-                  <p className="text-md font-semibold text-[#3E2723]">
-                    {event.tickets_type?.[0]
-                      ? `₹ ${event.tickets_type[0].price}`
-                      : "See details"}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
           </div>
         </div>
       </section>

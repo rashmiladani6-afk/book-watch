@@ -1,4 +1,4 @@
-import { usePopularEvents } from "@/features/events/hooks/usePopularEvents";
+import { useFavoriteEvents } from "@/features/events/hooks/useFavoriteEvents";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
@@ -21,9 +21,9 @@ const formatEventDate = (dateStr: string) => {
   return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
-const EventsList = () => {
+const FavoriteEvents = () => {
   const { user, session, loading: authLoading } = useAuth();
-  const { data, isLoading, error } = usePopularEvents(
+  const { data, isLoading, error } = useFavoriteEvents(
     session?.access_token,
     !!user && !!session?.access_token && !authLoading,
   );
@@ -44,7 +44,7 @@ const EventsList = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="container py-20 text-center">
-          <p className="text-lg mb-4">Please sign in to view events.</p>
+          <p className="text-lg mb-4">Please sign in to view liked events.</p>
           <Link to="/auth">
             <Button>Sign in</Button>
           </Link>
@@ -58,7 +58,7 @@ const EventsList = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="container py-10">
-          <p className="text-center text-muted-foreground">Loading popular events...</p>
+          <p className="text-center text-muted-foreground">Loading liked events...</p>
         </div>
       </div>
     );
@@ -70,7 +70,7 @@ const EventsList = () => {
         <Header />
         <div className="container py-10">
           <p className="text-center text-destructive">
-            Unable to load events. Please try again later.
+            Unable to load liked events. Please try again later.
           </p>
         </div>
       </div>
@@ -85,9 +85,9 @@ const EventsList = () => {
       <div className="container py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Popular Events</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">Liked Events</h1>
             <p className="text-sm text-muted-foreground">
-              Fetched from Garba Town popular events API
+              Events you have liked from Garba Town
             </p>
           </div>
           <Badge variant="outline">
@@ -96,7 +96,7 @@ const EventsList = () => {
         </div>
 
         {events.length === 0 ? (
-          <p className="text-center text-muted-foreground py-12">No popular events found.</p>
+          <p className="text-center text-muted-foreground py-12">No liked events found.</p>
         ) : (
           <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {events.map((event) => {
@@ -135,11 +135,6 @@ const EventsList = () => {
                       <p className="text-sm text-muted-foreground line-clamp-2">
                         {event.address || event.organizer || "Event"}
                       </p>
-                      {event.rating > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Rating: {event.rating}
-                        </p>
-                      )}
                     </div>
 
                     <div className="flex items-center justify-between pt-2">
@@ -171,4 +166,4 @@ const EventsList = () => {
   );
 };
 
-export default EventsList;
+export default FavoriteEvents;

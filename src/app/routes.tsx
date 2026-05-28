@@ -15,6 +15,7 @@ import Payment from '@/features/booking/pages/Payment';
 import EventTypes from '@/features/events/pages/EventTypes';
 import EventsList from '@/features/events/pages/EventsList';
 import EventDetail from '@/features/events/pages/EventDetail';
+import FavoriteEvents from '@/features/events/pages/FavoriteEvents';
 import Auth from '@/features/auth/pages/Auth';
 import NotFound from '@/pages/NotFound';
 
@@ -28,8 +29,9 @@ export const AppRoutes = () => {
             <Route path={ROUTES.EVENTS} element={<EventTypes />} />
             <Route path="/events/list" element={<EventsList />} />
             <Route path={ROUTES.EVENT_DETAIL} element={<EventDetail />} />
+            <Route path={ROUTES.FAVORITE_EVENTS} element={<FavoriteEvents />} />
             <Route path={ROUTES.PAYMENT} element={<Payment />} />
-            {/* <Route path={ROUTES.AUTH} element={<Auth />} /> */}
+            <Route path={ROUTES.AUTH} element={<Auth />} />
             <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
         </Routes>
     );

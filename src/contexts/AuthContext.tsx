@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 interface User {
   email: string;
   id?: string;
+  name?: string;
 }
 
 interface Session {
@@ -12,11 +13,19 @@ interface Session {
   access_token: string;
 }
 
+export interface AuthSignInPayload {
+  /** The identifier the user authenticated with (email or mobile). */
+  identifier: string;
+  token: string;
+  userId?: string;
+  name?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, token: string, userId?: string | undefined) => void; // Make it explicitly optional
+  signIn: (payload: AuthSignInPayload) => void;
   signOut: () => void;
 }
 
@@ -24,8 +33,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
-  signIn: () => { },
-  signOut: () => { },
+  signIn: () => {},
+  signOut: () => {},
 });
 
 export const useAuth = () => {
@@ -48,10 +57,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userEmail = localStorage.getItem('userEmail');
       const userId = localStorage.getItem('userId');
 
+      const userName = localStorage.getItem('userName');
       if (token && userEmail) {
         const user: User = {
           email: userEmail,
           id: userId || undefined,
+          name: userName || undefined,
         };
 
         const session: Session = {
@@ -72,24 +83,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuth();
   }, []);
 
-  const signIn = (email: string, token: string, userId?: string | undefined) => {
-    // Store in localStorage
+  const signIn = ({ identifier, token, userId, name }: AuthSignInPayload) => {
     localStorage.setItem('authToken', token);
-    localStorage.setItem('userEmail', email);
-    if (userId) {
-      localStorage.setItem('userId', userId);
-    }
+    localStorage.setItem('userEmail', identifier);
+    if (userId) localStorage.setItem('userId', userId);
+    if (name) localStorage.setItem('userName', name);
 
-    // Update state
-    const user: User = {
-      email,
-      id: userId,
-    };
-
-    const session: Session = {
-      user,
-      access_token: token,
-    };
+    const user: User = { email: identifier, id: userId, name };
+    const session: Session = { user, access_token: token };
 
     setUser(user);
     setSession(session);
@@ -100,6 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
 
     // Clear state
     setUser(null);

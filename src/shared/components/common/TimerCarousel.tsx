@@ -1,29 +1,47 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { Movie } from "@/data/movies";
 import { useNavigate } from "react-router-dom";
+
+interface EventCarouselItem {
+  id: number | string;
+  title: string;
+  image: string;
+  subtitle?: string;
+  badge?: string;
+  rating?: number;
+}
 
 interface TimerCarouselProps {
   movies: Movie[];
   autoRotateInterval?: number;
+  eventSlides?: EventCarouselItem[];
+  sideEventCards?: EventCarouselItem[];
 }
 
-const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps) => {
+const TimerCarousel = ({
+  movies,
+  autoRotateInterval = 5000,
+  eventSlides = [],
+  sideEventCards = [],
+}: TimerCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
 
+  const hasEventSlides = eventSlides.length > 0;
   const featuredMovies = movies.slice(0, 5);
-  const sideCards = movies.slice(5, 9);
+  const featuredEvents = eventSlides.slice(0, 5);
+  const featuredItems = hasEventSlides ? featuredEvents : featuredMovies;
+  const sideCards = hasEventSlides ? sideEventCards.slice(0, 2) : movies.slice(5, 9);
 
   const goToNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % featuredMovies.length);
+    setCurrentIndex((prev) => (prev + 1) % featuredItems.length);
     setProgress(0);
-  }, [featuredMovies.length]);
+  }, [featuredItems.length]);
 
   const goToPrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + featuredMovies.length) % featuredMovies.length);
+    setCurrentIndex((prev) => (prev - 1 + featuredItems.length) % featuredItems.length);
     setProgress(0);
   };
 
@@ -33,7 +51,7 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
   };
 
   useEffect(() => {
-    if (featuredMovies.length === 0) return;
+    if (featuredItems.length === 0) return;
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -51,9 +69,9 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
       clearInterval(progressInterval);
       clearTimeout(rotationTimeout);
     };
-  }, [currentIndex, autoRotateInterval, goToNext, featuredMovies.length]);
+  }, [currentIndex, autoRotateInterval, goToNext, featuredItems.length]);
 
-  if (!featuredMovies.length) return null;
+  if (!featuredItems.length) return null;
 
   return (
     <div className="relative bg-[#E8DED2] pt-4 pb-6 md:pt-6 md:pb-8 ">
@@ -69,7 +87,9 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
               boxShadow: '0 15px 35px -5px rgba(0, 0, 0, 0.5)'
             }}
           >
-            {featuredMovies.map((movie, index) => (
+            {featuredItems.map((movie, index) => {
+              const eventItem = hasEventSlides ? (movie as EventCarouselItem) : null;
+              return (
               <div
                 key={movie.id}
                 className={`absolute inset-0 transition-opacity duration-700 ${index === currentIndex ? "opacity-100" : "opacity-0"
@@ -90,9 +110,11 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
                   {/* Badge */}
                   <div className="mb-2 sm:mb-3">
                     <span className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 bg-[#107C10] text-white text-[10px] sm:text-xs font-semibold rounded">
-                      <span className="hidden sm:inline">Game Pass Ultimate + PC</span>
-                      <span className="sm:hidden">Game Pass</span>
-                      <span className="text-white/80">₹ 5,999.00</span>
+                      <span className="hidden sm:inline">{hasEventSlides ? (eventItem?.badge || "Top Event") : "Game Pass Ultimate + PC"}</span>
+                      <span className="sm:hidden">{hasEventSlides ? "Top Event" : "Game Pass"}</span>
+                      <span className="text-white/80">
+                        {hasEventSlides && typeof movie.rating === "number" ? `${movie.rating.toFixed(1)}/5` : "₹ 5,999.00"}
+                      </span>
                     </span>
                   </div>
 
@@ -103,12 +125,12 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
 
                   {/* Subtitle */}
                   <p className="text-sm sm:text-base lg:text-lg text-gray-300 mb-3 sm:mb-4">
-                    Available now
+                    {hasEventSlides ? (eventItem?.subtitle || "Live event") : "Available now"}
                   </p>
 
                   {/* Button */}
                   <button
-                    onClick={() => navigate(`/movie/${movie.id}`)}
+                    onClick={() => navigate(hasEventSlides ? `/events/${movie.id}` : `/movie/${movie.id}`)}
                     className="w-fit px-4 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded transition-all duration-200"
                   >
                     See details
@@ -139,7 +161,7 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
 
             {/* Navigation Arrows - Hidden on mobile */}
             <button
@@ -158,7 +180,7 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
 
             {/* Dot Indicators - Bottom center */}
             <div className="absolute bottom-4 sm:bottom-6 lg:bottom-8 left-1/2 -translate-x-1/2 flex gap-2 sm:gap-2.5 z-10">
-              {featuredMovies.map((_, index) => (
+              {featuredItems.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => goToSlide(index)}
@@ -169,35 +191,41 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
             </div>
           </div>
 
-          {/* Right Side Cards */}
+          {/* Right Side Cards */}                                                                                                                                
           <div className="w-full lg:flex-[0_0_35%] flex flex-col gap-3 sm:gap-4">
-            {/* Top Card - App Awards */}
-            <div
-              className="h-[180px] sm:h-[220px] md:h-[280px] lg:h-[340px] rounded-lg sm:rounded-xl overflow-hidden shadow-md lg:shadow-lg cursor-pointer transform hover:scale-[1.02] transition-transform duration-200"
-              style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-              }}
-            >
-              <div className="h-full flex items-center justify-between p-4 sm:p-5 lg:p-6 text-white">
-                <div>
-                  <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold">
-                    App Awards 2025
-                  </h3>
-                </div>
-                <div className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-white/20 rounded-xl lg:rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                  <svg className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
+            {/* Top Card - Top Rated Event */}
+            {eventSlides[0] && (
+              <div
+                onClick={() => navigate(`/events/${eventSlides[0].id}`)}
+                className="h-[180px] sm:h-[220px] md:h-[280px] lg:h-[340px] rounded-lg sm:rounded-xl overflow-hidden shadow-md lg:shadow-lg cursor-pointer transform hover:scale-[1.02] transition-transform duration-200 relative group"
+              >
+                <img
+                  src={eventSlides[0].image}
+                  alt={eventSlides[0].title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-white/40 to-white/40" />
+                <div className="absolute inset-0 h-full flex items-center p-4 sm:p-5 lg:p-6 text-[#2D2A26]">
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-lg uppercase tracking-wide text-[#000] mb-2">Top Rated Event</p>
+                    <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold line-clamp-2">
+                      {eventSlides[0].title}
+                    </h3>
+                    <p className="mt-2 inline-flex items-center gap-1.5 text-sm sm:text-base font-large text-[#000]">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-500" />
+                      {Number(eventSlides[0].rating ?? 0).toFixed(1)}/5
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Bottom Row - Two cards side by side */}
             <div className="h-[140px] sm:h-[180px] md:h-[200px] lg:h-[245px] flex gap-3 sm:gap-4">
               {/* Bottom-Left Card */}
               {sideCards[0] && (
                 <div
-                  onClick={() => navigate(`/movie/${sideCards[0].id}`)}
+                  onClick={() => navigate(hasEventSlides ? `/events/${sideCards[0].id}` : `/movie/${sideCards[0].id}`)}
                   className="flex-1 rounded-lg sm:rounded-xl overflow-hidden shadow-md lg:shadow-lg cursor-pointer transform hover:scale-[1.02] transition-transform duration-200 relative group"
                 >
                   <img
@@ -217,7 +245,7 @@ const TimerCarousel = ({ movies, autoRotateInterval = 5000 }: TimerCarouselProps
               {/* Bottom-Right Card */}
               {sideCards[1] && (
                 <div
-                  onClick={() => navigate(`/movie/${sideCards[1].id}`)}
+                  onClick={() => navigate(hasEventSlides ? `/events/${sideCards[1].id}` : `/movie/${sideCards[1].id}`)}
                   className="flex-1 rounded-lg sm:rounded-xl overflow-hidden shadow-md lg:shadow-lg cursor-pointer transform hover:scale-[1.02] transition-transform duration-200 relative group"
                 >
                   <img

@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { eventService } from "@/features/events/services/eventService";
 
-export const useEvent = (id?: string) => {
+export const useEvent = (id?: string, userToken?: string | null, enabled = true) => {
   return useQuery({
-    queryKey: ["event", id],
-    queryFn: () => eventService.getEventById(id as string),
-    enabled: !!id,
+    queryKey: ["event-details", id, userToken ?? ""],
+    queryFn: () => eventService.getEventDetailsById(id as string, userToken),
+    enabled: !!id && enabled && !!userToken,
+    retry: false,
   });
 };
-
-
