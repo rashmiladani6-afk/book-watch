@@ -36,6 +36,7 @@ export interface SignupResponse {
 export interface LoginRequest {
   login: string;
   type: AuthType;
+  fcmToken?: string | null;
 }
 
 export interface LoginResponse {
@@ -94,9 +95,17 @@ export const authService = {
 
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     try {
+      const resolvedFcmToken = (data.fcmToken ?? "").trim() || "web-client-fallback-token";
       const response = await axios.post(
         `${AUTH_BASE_URL}/login`,
-        { login: data.login, type: data.type },
+        {
+          login: data.login,
+          type: data.type,
+          fcm_token: resolvedFcmToken,
+          fcmToken: resolvedFcmToken,
+          r_fcm_token: resolvedFcmToken,
+          rfcm_token: resolvedFcmToken,
+        },
         { headers: authHeaders },
       );
       return response.data;

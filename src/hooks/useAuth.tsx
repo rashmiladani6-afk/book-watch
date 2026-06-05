@@ -84,7 +84,8 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await authService.login({ login: identifier, type });
+      const fcmToken = getStoredFcmToken();
+      const response = await authService.login({ login: identifier, type, fcmToken });
       console.log('Login (send OTP) response:', response);
       return response;
     } catch (err: any) {
