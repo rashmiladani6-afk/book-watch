@@ -16,6 +16,7 @@ import EventTypes from '@/features/events/pages/EventTypes';
 import EventsList from '@/features/events/pages/EventsList';
 import EventDetail from '@/features/events/pages/EventDetail';
 import FavoriteEvents from '@/features/events/pages/FavoriteEvents';
+import CartPage from '@/features/events/pages/CartPage';
 import Auth from '@/features/auth/pages/Auth';
 import NotFound from '@/pages/NotFound';
 
@@ -30,6 +31,7 @@ export const AppRoutes = () => {
             <Route path="/events/list" element={<EventsList />} />
             <Route path={ROUTES.EVENT_DETAIL} element={<EventDetail />} />
             <Route path={ROUTES.FAVORITE_EVENTS} element={<FavoriteEvents />} />
+            <Route path={ROUTES.CART} element={<CartPage />} />
             <Route path={ROUTES.PAYMENT} element={<Payment />} />
             <Route path={ROUTES.AUTH} element={<Auth />} />
             <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />

@@ -6,10 +6,8 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
-import { ROUTES } from "@/shared/constants/routes";
+import EventTicketsPanel from "@/features/events/components/EventTicketsPanel";
 import { Calendar, Heart, MapPin, Star, Ticket, Users } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const getEventImageUrl = (image: string | null | undefined) => {
   if (!image) return null;
@@ -35,17 +33,17 @@ interface CartDetailDialogProps {
   tickets: CartTicketDetail[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  userToken?: string | null;
 }
 
-const CartDetailDialog = ({ event, tickets, open, onOpenChange }: CartDetailDialogProps) => {
-  const navigate = useNavigate();
-
+const CartDetailDialog = ({
+  event,
+  tickets,
+  open,
+  onOpenChange,
+  userToken,
+}: CartDetailDialogProps) => {
   if (!event) return null;
-
-  const handleBookTicket = () => {
-    onOpenChange(false);
-    navigate(ROUTES.CART);
-  };
 
   const imageUrl = getEventImageUrl(event.image);
   const rating = Number(event.rating ?? 0);
@@ -127,37 +125,11 @@ const CartDetailDialog = ({ event, tickets, open, onOpenChange }: CartDetailDial
           </div>
         </div>
 
-        {tickets.length > 0 && (
-          <div className="rounded-xl border bg-muted/30 p-4">
-            <p className="mb-3 text-sm font-semibold">Available tickets</p>
-            <div className="space-y-3">
-              {tickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="rounded-lg border bg-background p-3 text-sm"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold capitalize">{ticket.type}</p>
-                    <Button size="sm" className="shrink-0" onClick={handleBookTicket}>
-                      Book ticket
-                    </Button>
-                  </div>
-                  <p className="mt-1 text-muted-foreground">
-                    {formatEventDate(ticket.date)}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <span>Price: ₹{ticket.price}</span>
-                    <span>Available: {ticket.available_tickets ?? "—"}</span>
-                    <span>Booked: {ticket.booked_tickets ?? 0}</span>
-                    {ticket.max_seats !== undefined && (
-                      <span>Max seats: {ticket.max_seats}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <EventTicketsPanel
+          eventId={event.id}
+          tickets={tickets}
+          userToken={userToken}
+        />
       </DialogContent>
     </Dialog>
   );

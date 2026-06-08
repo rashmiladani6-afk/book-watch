@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { useToast } from "@/shared/components/ui/use-toast";
-import { Movie } from "@/data/movies";
+import type { Movie } from "@/shared/types/common";
 import { Link } from "react-router-dom";
 
 interface MovieCardProps {

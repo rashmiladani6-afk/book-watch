@@ -9,7 +9,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart, CART_QUERY_KEY } from "@/features/events/hooks/useCart";
 import { cartService } from "@/features/events/services/cartService";
 import CartDetailDialog from "@/features/events/components/CartDetailDialog";
+import EventTicketsPanel from "@/features/events/components/EventTicketsPanel";
 import { ROUTES } from "@/shared/constants/routes";
+import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { toast } from "sonner";
 import {
   Calendar,
@@ -82,7 +84,7 @@ const CartPage = () => {
           <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-primary" />
           <h1 className="text-2xl font-bold mb-2">Sign in to view cart</h1>
           <p className="text-muted-foreground mb-6">Your saved event will appear here.</p>
-          <Link to={ROUTES.AUTH}>
+          <Link to={getAuthUrl(ROUTES.CART)}>
             <Button size="lg">Sign in</Button>
           </Link>
         </div>
@@ -134,7 +136,7 @@ const CartPage = () => {
             <p className="text-muted-foreground text-sm mb-6">
               Browse events and add one to your cart to continue.
             </p>
-            <Link to={ROUTES.HOME}>
+            <Link to={ROUTES.EVENTS}>
               <Button>
                 Explore events
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -205,24 +207,36 @@ const CartPage = () => {
               })}
             </div>
 
-            <aside className="rounded-2xl border bg-card p-6 h-fit space-y-4 shadow-sm">
-              <h3 className="font-semibold text-lg">Order summary</h3>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-semibold">₹{subtotal}</span>
+            <aside className="space-y-4">
+              {fullDetail.event && fullDetail.tickets.length > 0 && (
+                <EventTicketsPanel
+                  eventId={fullDetail.event.id}
+                  tickets={fullDetail.tickets}
+                  userToken={session?.access_token}
+                  title="Buy tickets"
+                  className="rounded-2xl border bg-card p-4 shadow-sm"
+                />
+              )}
+
+              <div className="rounded-2xl border bg-card p-6 h-fit space-y-4 shadow-sm">
+                <h3 className="font-semibold text-lg">Order summary</h3>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-semibold">₹{subtotal}</span>
+                </div>
+                <Button className="w-full" variant="outline" onClick={() => setDetailOpen(true)}>
+                  View cart details
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={handleRemoveCart}
+                  disabled={isRemoving}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {isRemoving ? "Removing..." : "Remove from cart"}
+                </Button>
               </div>
-              <Button className="w-full" variant="outline" onClick={() => setDetailOpen(true)}>
-                View cart details
-              </Button>
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={handleRemoveCart}
-                disabled={isRemoving}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {isRemoving ? "Removing..." : "Remove from cart"}
-              </Button>
             </aside>
           </div>
         )}
@@ -233,6 +247,7 @@ const CartPage = () => {
         tickets={fullDetail.tickets}
         open={detailOpen}
         onOpenChange={setDetailOpen}
+        userToken={session?.access_token}
       />
     </PageShell>
   );

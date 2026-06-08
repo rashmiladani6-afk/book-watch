@@ -28,6 +28,9 @@ const EVENT_DETAILS_BASE_URL =
 const EVENT_LIKE_URL =
   import.meta.env.VITE_GARBATOWN_EVENT_LIKE_URL ??
   `${GARBA_PROXY_BASE}/api/v1/odoo/event_like_unlike`;
+const ADD_RATING_URL =
+  import.meta.env.VITE_GARBATOWN_ADD_RATING_URL ??
+  `${GARBA_PROXY_BASE}/api/v1/odoo/add_rating`;
 
 export interface PopularEvent {
   id: number;
@@ -83,6 +86,12 @@ interface ToggleLikeResponse {
   message?: string;
   data?: unknown;
   is_like?: boolean;
+}
+
+export interface AddRatingResponse {
+  status: string;
+  message?: string;
+  data?: unknown;
 }
 
 const buildPopularEventsHeaderVariants = (userToken?: string | null): Record<string, string>[] => {
@@ -450,6 +459,45 @@ const toggleEventLikeApi = async (
   throw lastError;
 };
 
+const addEventRatingApi = async (
+  id: number | string,
+  rating: number,
+  userToken?: string | null,
+): Promise<AddRatingResponse> => {
+  const headerVariants = prioritizeHeaders(
+    buildPopularEventsHeaderVariants(userToken),
+    resolvedLikeHeader,
+  );
+  if (headerVariants.length === 0) {
+    throw new Error("User token is required for event rating API");
+  }
+
+  const eventId = Number(id);
+  const normalizedRating = Math.min(5, Math.max(1, Math.round(rating)));
+  let lastError: unknown = null;
+
+  for (const headers of headerVariants) {
+    try {
+      const response = await axios.post<AddRatingResponse>(
+        ADD_RATING_URL,
+        { id: eventId, rating: normalizedRating },
+        { headers, timeout: 15000 },
+      );
+      resolvedLikeHeader = headers;
+      return response.data;
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      lastError = error;
+      if (status === 401 || status === 403 || status === 404 || status === 405 || status === 500) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
 export const eventService = {
   async getPopularEvents(userToken?: string | null): Promise<PopularEventsResponse> {
     return fetchPopularEvents(userToken);
@@ -485,5 +533,13 @@ export const eventService = {
     userToken?: string | null,
   ): Promise<boolean> {
     return toggleEventLikeApi(id, currentIsLike, userToken);
+  },
+
+  async addEventRating(
+    id: number | string,
+    rating: number,
+    userToken?: string | null,
+  ): Promise<AddRatingResponse> {
+    return addEventRatingApi(id, rating, userToken);
   },
 };

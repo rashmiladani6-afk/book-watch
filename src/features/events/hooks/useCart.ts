@@ -9,8 +9,8 @@ export const useCart = (userToken?: string | null, enabled = true) => {
     queryFn: () => cartService.getCartDetail(userToken),
     enabled: enabled && !!userToken,
     retry: false,
-    staleTime: 5 * 60_000,
-    refetchOnMount: false,
+    staleTime: 30_000,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 };

@@ -1,6 +1,8 @@
 // src/features/auth/services/authService.ts
 import axios from 'axios';
 
+import { ensureFcmToken } from '@/lib/firebase/messaging';
+
 // Dedicated Garba Town auth proxy path.
 // In dev: Vite proxies /garba-auth/* → https://www.garbatown.com/*
 // In prod: Vercel rewrites /garba-auth/:path* → https://www.garbatown.com/:path*
@@ -17,25 +19,29 @@ const authHeaders = {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type AuthType = 'email' | 'phone';
+export type LoginType = 'password' | 'otp';
 
 export interface SignupRequest {
   name: string;
   email: string;
   mobile: string;
-  type: AuthType;
+  password: string;
+  fcmToken?: string | null;
 }
 
 export interface SignupResponse {
   status: string;
   message: string;
   OTP?: string;
+  otp?: string;
   data?: Record<string, unknown>;
 }
 
 export interface LoginRequest {
   login: string;
-  type: AuthType;
+  type: LoginType;
+  password?: string;
+  otp?: string;
   fcmToken?: string | null;
 }
 
@@ -43,7 +49,8 @@ export interface LoginResponse {
   status: string;
   message: string;
   otp?: string;
-  data: Array<{ message: string }>;
+  OTP?: string;
+  data?: AuthUser | Array<{ message: string }>;
 }
 
 export interface VerifyOTPRequest {
@@ -71,18 +78,38 @@ export interface VerifyOTPResponse {
   data?: AuthUser;
 }
 
+const withFcmToken = async (fcmToken?: string | null) => {
+  const resolved = (fcmToken ?? '').trim() || (await ensureFcmToken());
+  return { fcm_token: resolved };
+};
+
+export const extractAuthUser = (data: unknown): AuthUser | null => {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return null;
+  }
+
+  const user = data as AuthUser;
+  if (user.user_token || user.token || user.access_token) {
+    return user;
+  }
+
+  return null;
+};
+
 // ── Service ────────────────────────────────────────────────────────────────
 
 export const authService = {
   signup: async (data: SignupRequest): Promise<SignupResponse> => {
     try {
+      const fcmPayload = await withFcmToken(data.fcmToken);
       const response = await axios.post(
         `${AUTH_BASE_URL}/signup`,
         {
           name: data.name,
           email: data.email,
           mobile: data.mobile,
-          type: data.type,
+          password: data.password,
+          ...fcmPayload,
         },
         { headers: authHeaders },
       );
@@ -95,17 +122,24 @@ export const authService = {
 
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     try {
-      const resolvedFcmToken = (data.fcmToken ?? "").trim() || "web-client-fallback-token";
+      const fcmPayload = await withFcmToken(data.fcmToken);
+      const payload: Record<string, unknown> = {
+        login: data.login,
+        type: data.type,
+        ...fcmPayload,
+      };
+
+      if (data.type === 'password') {
+        payload.password = data.password;
+      }
+
+      if (data.type === 'otp' && data.otp) {
+        payload.otp = data.otp;
+      }
+
       const response = await axios.post(
         `${AUTH_BASE_URL}/login`,
-        {
-          login: data.login,
-          type: data.type,
-          fcm_token: resolvedFcmToken,
-          fcmToken: resolvedFcmToken,
-          r_fcm_token: resolvedFcmToken,
-          rfcm_token: resolvedFcmToken,
-        },
+        payload,
         { headers: authHeaders },
       );
       return response.data;
@@ -117,17 +151,13 @@ export const authService = {
 
   verifyOTP: async (data: VerifyOTPRequest): Promise<VerifyOTPResponse> => {
     try {
-      const resolvedFcmToken = (data.fcmToken ?? "").trim() || "web-client-fallback-token";
+      const fcmPayload = await withFcmToken(data.fcmToken);
       const response = await axios.post(
         `${AUTH_BASE_URL}/verify-otp`,
         {
           login: data.login,
           otp: data.otp,
-          // Backend variants observed across environments.
-          fcm_token: resolvedFcmToken,
-          fcmToken: resolvedFcmToken,
-          r_fcm_token: resolvedFcmToken,
-          rfcm_token: resolvedFcmToken,
+          ...fcmPayload,
         },
         { headers: authHeaders },
       );

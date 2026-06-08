@@ -1,12 +1,28 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
 import { Button } from "@/shared/components/ui/button";
-import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Play, Share2, Star, ThumbsUp, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
+import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Play, Share2, ShoppingCart, Star, X } from "lucide-react";
 import { useEvent } from "@/features/events/hooks/useEvent";
-import { eventService } from "@/features/events/services/eventService";
+import { useAddToCart } from "@/features/events/hooks/useAddToCart";
+import EventLikeButton from "@/features/events/components/EventLikeButton";
+import EventRatingForm from "@/features/events/components/EventRatingForm";
+import EventTicketsPanel from "@/features/events/components/EventTicketsPanel";
+import { useCart } from "@/features/events/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
+import { ROUTES } from "@/shared/constants/routes";
+import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { toast } from "sonner";
 
 const getEventImageUrl = (image: string | null | undefined) => {
@@ -58,16 +74,38 @@ const normalizeAddress = (address?: string | null) => {
 
 const EventDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, session, loading: authLoading } = useAuth();
+  const {
+    addToCart,
+    confirmReplace,
+    cancelReplace,
+    replaceEventId,
+    isAdding,
+  } = useAddToCart(session?.access_token, {
+    onAdded: () => {
+      toast.success("Event added to cart");
+      navigate(ROUTES.CART);
+    },
+    onError: (message) => toast.error(message),
+  });
   const { data: event, isLoading, error } = useEvent(
     id,
     session?.access_token,
     !!user && !!session?.access_token && !authLoading,
   );
+  const { data: cartData } = useCart(
+    session?.access_token,
+    !!user && !!session?.access_token && !authLoading,
+  );
+  const cartEvent = cartData?.fullDetail?.event;
+  const cartTickets =
+    cartEvent && event && cartEvent.id === event.id
+      ? cartData?.fullDetail?.tickets ?? []
+      : [];
   const [isTrailerOpen, setIsTrailerOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isLikeUpdating, setIsLikeUpdating] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = isTrailerOpen ? "hidden" : "unset";
@@ -76,26 +114,9 @@ const EventDetail = () => {
     };
   }, [isTrailerOpen]);
 
-  useEffect(() => {
-    setIsLiked(Boolean(event?.is_like));
-  }, [event?.is_like]);
-
-  const handleLikeToggle = async () => {
+  const handleAddToCart = () => {
     if (!event?.id) return;
-    setIsLikeUpdating(true);
-    try {
-      const updatedLike = await eventService.toggleEventLike(
-        event.id,
-        isLiked,
-        session?.access_token,
-      );
-      setIsLiked(updatedLike);
-      toast.success(updatedLike ? "Added to liked events" : "Removed from liked events");
-    } catch {
-      toast.error("Could not update like status. Please try again.");
-    } finally {
-      setIsLikeUpdating(false);
-    }
+    addToCart(event.id);
   };
 
   if (authLoading || isLoading) {
@@ -115,7 +136,7 @@ const EventDetail = () => {
         <Header />
         <div className="container py-20 text-center">
           <p className="text-lg mb-4">Please sign in to view event details.</p>
-          <Link to="/auth">
+          <Link to={getAuthUrl(location.pathname)}>
             <Button>Sign in</Button>
           </Link>
         </div>
@@ -262,24 +283,22 @@ const EventDetail = () => {
                 </div>
 
                 <div className="mb-5 flex flex-wrap items-center justify-center gap-2 text-sm text-white/80 sm:mb-8 sm:justify-start sm:gap-3 sm:text-lg">
-                  <button
-                    type="button"
-                    onClick={handleLikeToggle}
-                    disabled={isLikeUpdating}
-                    className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-1.5 text-white transition-colors hover:bg-white/25"
-                    aria-pressed={isLiked}
-                  >
-                    <ThumbsUp className={`h-4 w-4 ${isLiked ? "fill-blue-400 text-blue-400" : "text-white"}`} />
-                    <span>{isLiked ? "Liked" : "Like"}</span>
-                  </button>
+                  <EventLikeButton
+                    eventId={event.id}
+                    isLiked={Boolean(event.is_like)}
+                    userToken={session?.access_token}
+                    variant="hero"
+                  />
                 </div>
 
                 <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-start">
                   <Button
                     className="w-full rounded-xl bg-red-600 px-8 py-4 text-lg font-bold text-white shadow-2xl transition-all hover:bg-red-700 hover:shadow-red-600/50 sm:w-auto sm:py-5 sm:px-12"
-                    onClick={() => toast.info("Ticket booking coming soon")}
+                    onClick={handleAddToCart}
+                    disabled={isAdding}
                   >
-                    Book Tickets
+                    <ShoppingCart className="mr-2 h-5 w-5" />
+                    {isAdding ? "Adding..." : "Add to Cart"}
                   </Button>
 
                   <Button
@@ -383,6 +402,30 @@ const EventDetail = () => {
             <span>
               <strong className="text-gray-900">Booked:</strong> {event.booked_tickets ?? 0} tickets
             </span>
+          </div>
+
+          {cartTickets.length > 0 ? (
+            <div className="mt-8">
+              <EventTicketsPanel
+                eventId={event.id}
+                tickets={cartTickets}
+                userToken={session?.access_token}
+                title="Buy tickets"
+                className="rounded-xl border bg-white p-4 sm:p-6"
+              />
+            </div>
+          ) : (
+            <div className="mt-8 rounded-xl border border-dashed bg-white p-4 sm:p-6 text-sm text-muted-foreground">
+              Add this event to your cart to see ticket types and buy tickets.
+            </div>
+          )}
+
+          <div className="mt-8">
+            <EventRatingForm
+              eventId={event.id}
+              currentRating={ratingValue}
+              userToken={session?.access_token}
+            />
           </div>
 
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -514,6 +557,28 @@ const EventDetail = () => {
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={replaceEventId != null}
+        onOpenChange={(open) => {
+          if (!open) cancelReplace();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace cart event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your cart already has an event. Replace it with this one to continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelReplace}>Keep current</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmReplace} disabled={isAdding}>
+              {isAdding ? "Replacing..." : "Replace event"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Footer />
     </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, User, LogOut, MapPin, X, ArrowLeft, Heart } from "lucide-react";
+import { Search, User, LogOut, MapPin, X, ArrowLeft, Heart, ShoppingCart } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -18,6 +18,8 @@ import {
 } from "@/shared/components/ui/dialog";
 import { useAuth as useAuthContext } from "@/contexts/AuthContext";
 import { useAuth } from "../../../hooks/useAuth";
+import { extractAuthUser } from "@/features/auth/services/authService";
+import { useCart } from "@/features/events/hooks/useCart";
 
 const popularCities = [
   { name: "Mumbai", icon: "🏢" },
@@ -61,9 +63,17 @@ const Header = ({ onSearch }: HeaderProps) => {
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupMobile, setSignupMobile] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signinPassword, setSigninPassword] = useState("");
+  const [postLoginPath, setPostLoginPath] = useState<string | null>(null);
 
-  const { user, signIn: contextSignIn, signOut: contextSignOut } = useAuthContext();
-  const { signup, sendOTP, verifyOTP, loading, error, clearError } = useAuth();
+  const { user, session, signIn: contextSignIn, signOut: contextSignOut } = useAuthContext();
+  const { signup, loginWithPassword, verifyOTP, loading, error, clearError } = useAuth();
+  const { data: cartData } = useCart(
+    session?.access_token,
+    !!user && !!session?.access_token,
+  );
+  const cartItemCount = (cartData?.items?.length ?? 0) > 0 || cartData?.fullDetail?.event ? 1 : 0;
 
   // OTP timer
   useEffect(() => {
@@ -86,8 +96,34 @@ const Header = ({ onSearch }: HeaderProps) => {
     setScreen('options');
     setIdentifier("");
     setSignupName(""); setSignupEmail(""); setSignupMobile("");
+    setSignupPassword(""); setSigninPassword("");
+    setPostLoginPath(null);
     resetOtp();
     clearError();
+  };
+
+  const completeSignIn = (identifier: string, userData: ReturnType<typeof extractAuthUser>) => {
+    if (!userData) {
+      throw new Error("No auth token in response");
+    }
+
+    const token =
+      userData.user_token ??
+      userData.token ??
+      userData.access_token;
+
+    if (!token) {
+      throw new Error("No auth token in response");
+    }
+
+    const userId = userData.id != null ? String(userData.id) : undefined;
+    contextSignIn({ identifier, token, userId, name: userData.name });
+    toast.success("Signed in successfully!");
+    handleClose();
+    if (postLoginPath) {
+      navigate(postLoginPath);
+      setPostLoginPath(null);
+    }
   };
 
   const navigate = useNavigate();
@@ -127,7 +163,7 @@ const Header = ({ onSearch }: HeaderProps) => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const signupRes = await signup(signupName, signupEmail, signupMobile);
+      const signupRes = await signup(signupName, signupEmail, signupMobile, signupPassword);
       console.log('Signup response:', signupRes);
       setIdentifier(signupEmail);
       // Auto-fill OTP if returned in signup response
@@ -146,24 +182,14 @@ const Header = ({ onSearch }: HeaderProps) => {
     }
   };
 
-  // ── Sign-in (send OTP) flow ───────────────────────────────────────────────
-  const handleSendOtp = async (e: React.FormEvent) => {
+  // ── Sign-in (password) flow ───────────────────────────────────────────────
+  const handlePasswordSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await sendOTP(identifier);
-      // Backend returns OTP in response body — use it directly
-      const otpValue = response?.otp ? String(response.otp) : null;
-      if (otpValue) {
-        setOtp(otpValue.padEnd(6, '').slice(0, 6).split(''));
-        toast.success(`Your OTP is: ${otpValue}`, { duration: 30000 });
-      } else {
-        toast.success("OTP sent! Check your email.");
-      }
-      setScreen('otp');
-      setOtpTimer(180);
-      setIsTimerActive(true);
+      const response = await loginWithPassword(identifier, signinPassword);
+      completeSignIn(identifier, extractAuthUser(response.data));
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || "Failed to send OTP");
+      toast.error(err?.response?.data?.message || err?.message || "Sign in failed");
     }
   };
 
@@ -189,20 +215,7 @@ const Header = ({ onSearch }: HeaderProps) => {
 
     try {
       const response = await verifyOTP(otpCode, identifier);
-
-      const token =
-        response?.data?.user_token ??
-        response?.data?.token ??
-        response?.data?.access_token;
-      if (!token) throw new Error("No auth token in response");
-
-      const userId = response?.data?.id != null
-        ? String(response.data.id)
-        : undefined;
-
-      contextSignIn({ identifier, token, userId, name: response?.data?.name });
-      toast.success("Signed in successfully!");
-      handleClose();
+      completeSignIn(identifier, extractAuthUser(response.data));
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || "Invalid OTP");
     }
@@ -323,6 +336,18 @@ const Header = ({ onSearch }: HeaderProps) => {
             className="h-12 border-gray-300 rounded-lg"
           />
         </div>
+        <div className="space-y-1">
+          <Label htmlFor="signup-password" className="text-sm font-medium text-gray-700">Password</Label>
+          <Input
+            id="signup-password"
+            type="password"
+            placeholder="Create a password"
+            value={signupPassword}
+            onChange={(e) => setSignupPassword(e.target.value)}
+            required
+            className="h-12 border-gray-300 rounded-lg"
+          />
+        </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -350,9 +375,9 @@ const Header = ({ onSearch }: HeaderProps) => {
         <ArrowLeft className="h-5 w-5" />
       </button>
       <h2 className="text-2xl font-semibold text-gray-900 mb-1">Sign In</h2>
-      <p className="text-sm text-gray-500 mb-6">Enter your email or mobile number</p>
+      <p className="text-sm text-gray-500 mb-6">Enter your email or mobile and password</p>
 
-      <form onSubmit={handleSendOtp} className="space-y-4">
+      <form onSubmit={handlePasswordSignIn} className="space-y-4">
         <div className="space-y-1">
           <Label htmlFor="signin-identifier" className="text-sm font-medium text-gray-700">
             Email or Mobile
@@ -368,6 +393,20 @@ const Header = ({ onSearch }: HeaderProps) => {
             className="h-12 border-gray-300 rounded-lg"
           />
         </div>
+        <div className="space-y-1">
+          <Label htmlFor="signin-password" className="text-sm font-medium text-gray-700">
+            Password
+          </Label>
+          <Input
+            id="signin-password"
+            type="password"
+            placeholder="Enter your password"
+            value={signinPassword}
+            onChange={(e) => setSigninPassword(e.target.value)}
+            required
+            className="h-12 border-gray-300 rounded-lg"
+          />
+        </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -376,7 +415,7 @@ const Header = ({ onSearch }: HeaderProps) => {
           disabled={loading}
           className="w-full h-12 bg-[#8B5E3C] hover:bg-[#5C4033] text-white font-medium rounded-lg"
         >
-          {loading ? "Sending OTP..." : "Send OTP"}
+          {loading ? "Signing in..." : "Sign In"}
         </Button>
 
         <p className="text-center text-sm text-gray-500">
@@ -429,9 +468,14 @@ const Header = ({ onSearch }: HeaderProps) => {
                 type="button"
                 className="text-[#8B5E3C] hover:underline font-medium"
                     onClick={async () => {
+                  if (!signupEmail || !signupPassword) {
+                    toast.info("You can sign in with your password from the Sign In screen.");
+                    return;
+                  }
+
                   try {
-                    const res = await sendOTP(identifier);
-                    const resendOtp = res?.otp ? String(res.otp) : null;
+                    const res = await signup(signupName, signupEmail, signupMobile, signupPassword);
+                    const resendOtp = res?.OTP ? String(res.OTP) : res?.otp ? String(res.otp) : null;
                     if (resendOtp) {
                       setOtp(resendOtp.padEnd(6, '').slice(0, 6).split(''));
                       toast.success(`Your OTP is: ${resendOtp}`, { duration: 30000 });
@@ -441,7 +485,7 @@ const Header = ({ onSearch }: HeaderProps) => {
                     setOtpTimer(180);
                     setIsTimerActive(true);
                   } catch {
-                    // error shown via hook state
+                    toast.info("Account already created. Sign in with your password instead.");
                   }
                 }}
               >
@@ -524,29 +568,64 @@ const Header = ({ onSearch }: HeaderProps) => {
           </Button>
 
           {user ? (
-            <Link to={ROUTES.FAVORITE_EVENTS}>
+            <>
+              <Link to={ROUTES.CART} className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-[#8B5E3C] hover:text-[#5C4033] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
+                  aria-label="Cart"
+                >
+                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+                {cartItemCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Link>
+              <Link to={ROUTES.FAVORITE_EVENTS}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-[#8B5E3C] hover:text-[#5C4033] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
+                  aria-label="Liked events"
+                >
+                  <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <>
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={() => {
+                  toast.info("Please sign in to view your cart.");
+                  setPostLoginPath(ROUTES.CART);
+                  setShow(true);
+                  setScreen("signin");
+                }}
+                className="text-[#8B5E3C] hover:text-[#5C4033] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
+                aria-label="Cart"
+              >
+                <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  toast.info("Please sign in to view liked events.");
+                  setPostLoginPath(ROUTES.FAVORITE_EVENTS);
+                  setShow(true);
+                  setScreen("signin");
+                }}
                 className="text-[#8B5E3C] hover:text-[#5C4033] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
                 aria-label="Liked events"
               >
                 <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
-            </Link>
-          ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                toast.info("Please sign in to view liked events.");
-                navigate(ROUTES.AUTH);
-              }}
-              className="text-[#8B5E3C] hover:text-[#5C4033] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
-              aria-label="Liked events"
-            >
-              <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
+            </>
           )}
 
           <Button

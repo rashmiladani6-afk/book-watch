@@ -6,7 +6,10 @@ import { Button } from "@/shared/components/ui/button";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
 import { Link } from "react-router-dom";
-import { generateRoute } from "@/shared/constants/routes";
+import { Star } from "lucide-react";
+import { generateRoute, ROUTES } from "@/shared/constants/routes";
+import { getAuthUrl } from "@/lib/auth/authRedirect";
+import EventLikeButton from "@/features/events/components/EventLikeButton";
 
 const getEventImageUrl = (image: string | null | undefined) => {
   if (!image) return null;
@@ -45,7 +48,7 @@ const FavoriteEvents = () => {
         <Header />
         <div className="container py-20 text-center">
           <p className="text-lg mb-4">Please sign in to view liked events.</p>
-          <Link to="/auth">
+          <Link to={getAuthUrl(ROUTES.FAVORITE_EVENTS)}>
             <Button>Sign in</Button>
           </Link>
         </div>
@@ -107,17 +110,26 @@ const FavoriteEvents = () => {
                   key={event.id}
                   className="overflow-hidden flex flex-col h-full"
                 >
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt={event.name}
-                      className="w-full h-40 object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-40 bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] flex items-center justify-center text-white text-3xl font-bold">
-                      {event.name.charAt(0)}
+                  <div className="relative">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={event.name}
+                        className="w-full h-40 object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-40 bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] flex items-center justify-center text-white text-3xl font-bold">
+                        {event.name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2">
+                      <EventLikeButton
+                        eventId={event.id}
+                        isLiked={Boolean(event.is_like)}
+                        userToken={session?.access_token}
+                      />
                     </div>
-                  )}
+                  </div>
 
                   <div className="p-4 flex flex-col flex-1 justify-between space-y-3">
                     <div className="space-y-2">
@@ -135,6 +147,12 @@ const FavoriteEvents = () => {
                       <p className="text-sm text-muted-foreground line-clamp-2">
                         {event.address || event.organizer || "Event"}
                       </p>
+                      {event.rating > 0 && (
+                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                          {event.rating.toFixed(1)}/5
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between pt-2">

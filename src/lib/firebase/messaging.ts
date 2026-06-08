@@ -29,6 +29,31 @@ export const getStoredFcmToken = () => {
   return localStorage.getItem(FCM_TOKEN_STORAGE_KEY);
 };
 
+/**
+ * Resolves a usable FCM token for Garba Town auth APIs.
+ * Tries localStorage first, then requests a new token, then env fallback.
+ */
+export const ensureFcmToken = async (): Promise<string> => {
+  const stored = getStoredFcmToken()?.trim();
+  if (stored) {
+    return stored;
+  }
+
+  const envToken = import.meta.env.VITE_DEFAULT_FCM_TOKEN?.trim();
+  if (envToken) {
+    storeFcmToken(envToken);
+    return envToken;
+  }
+
+  const result = await requestFcmToken();
+  if (result.token?.trim()) {
+    return result.token.trim();
+  }
+
+  // API accepts this placeholder when a real device token is unavailable.
+  return 'web-client-fallback-token';
+};
+
 const storeFcmToken = (token: string | null) => {
   if (!isBrowser()) {
     return;

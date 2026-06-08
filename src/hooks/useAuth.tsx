@@ -2,26 +2,12 @@
 import { useState } from 'react';
 import {
   authService,
-  AuthType,
+  extractAuthUser,
   VerifyOTPResponse,
   SignupResponse,
   LoginResponse,
 } from '../features/auth/services/authService';
 import { isValidEmail, isValidPhone } from '../shared/utils/validators';
-import { getStoredFcmToken } from '../lib/firebase/messaging';
-
-export type { AuthType };
-
-/**
- * Derives the auth type from an identifier string.
- * Returns null when the input is neither a valid email nor a valid Indian
- * mobile number, so callers can show a friendly validation error.
- */
-export const inferAuthType = (identifier: string): AuthType | null => {
-  if (isValidEmail(identifier)) return 'email';
-  if (isValidPhone(identifier)) return 'phone';
-  return null;
-};
 
 export const useAuth = () => {
   const [loading, setLoading] = useState(false);
@@ -30,14 +16,13 @@ export const useAuth = () => {
   const clearError = () => setError(null);
 
   /**
-   * Sign up a new user.
-   * `type` is derived automatically from the email field; it is always
-   * 'email' for signup because both email + mobile are collected.
+   * Sign up a new user with password.
    */
   const signup = async (
     name: string,
     email: string,
     mobile: string,
+    password: string,
   ): Promise<SignupResponse> => {
     if (!name.trim()) {
       const msg = 'Please enter your name';
@@ -54,11 +39,16 @@ export const useAuth = () => {
       setError(msg);
       throw new Error(msg);
     }
+    if (!password.trim()) {
+      const msg = 'Please enter a password';
+      setError(msg);
+      throw new Error(msg);
+    }
 
     setLoading(true);
     setError(null);
     try {
-      const response = await authService.signup({ name, email, mobile, type: 'email' });
+      const response = await authService.signup({ name, email, mobile, password });
       return response;
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Signup failed. Please try again.';
@@ -70,13 +60,24 @@ export const useAuth = () => {
   };
 
   /**
-   * Send an OTP to the given identifier (email or phone number).
-   * Type is inferred automatically.
+   * Sign in with email/mobile and password.
    */
-  const sendOTP = async (identifier: string): Promise<LoginResponse> => {
-    const type = inferAuthType(identifier);
-    if (!type) {
+  const loginWithPassword = async (
+    identifier: string,
+    password: string,
+  ): Promise<LoginResponse> => {
+    if (!identifier.trim()) {
+      const msg = 'Please enter your email or mobile number';
+      setError(msg);
+      throw new Error(msg);
+    }
+    if (!isValidEmail(identifier) && !isValidPhone(identifier)) {
       const msg = 'Please enter a valid email address or 10-digit mobile number';
+      setError(msg);
+      throw new Error(msg);
+    }
+    if (!password.trim()) {
+      const msg = 'Please enter your password';
       setError(msg);
       throw new Error(msg);
     }
@@ -84,12 +85,14 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      const fcmToken = getStoredFcmToken();
-      const response = await authService.login({ login: identifier, type, fcmToken });
-      console.log('Login (send OTP) response:', response);
+      const response = await authService.login({
+        login: identifier,
+        type: 'password',
+        password,
+      });
       return response;
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to send OTP. Please try again.';
+      const msg = err.response?.data?.message || 'Sign in failed. Please try again.';
       setError(msg);
       throw err;
     } finally {
@@ -98,19 +101,16 @@ export const useAuth = () => {
   };
 
   /**
-   * Verify an OTP.
-   * Type is inferred from the identifier; FCM token is pulled from localStorage.
+   * Verify an OTP after signup.
    */
   const verifyOTP = async (
     otp: string,
     identifier: string,
   ): Promise<VerifyOTPResponse> => {
-    const fcmToken = getStoredFcmToken();
-
     setLoading(true);
     setError(null);
     try {
-      const response = await authService.verifyOTP({ login: identifier, otp, fcmToken });
+      const response = await authService.verifyOTP({ login: identifier, otp });
       return response;
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Invalid OTP. Please try again.';
@@ -121,5 +121,5 @@ export const useAuth = () => {
     }
   };
 
-  return { signup, sendOTP, verifyOTP, loading, error, clearError };
+  return { signup, loginWithPassword, verifyOTP, loading, error, clearError };
 };

@@ -1,6 +1,6 @@
 // src/features/auth/pages/Auth.tsx
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, User } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -8,14 +8,19 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { useAuth as useAuthContext } from '@/contexts/AuthContext';
 import { useAuth } from '@/hooks/useAuth';
+import { extractAuthUser } from '@/features/auth/services/authService';
 import { ROUTES } from '@/shared/constants/routes';
+import { getSafeReturnPath } from '@/lib/auth/authRedirect';
 
 type Screen = 'options' | 'signup' | 'signin' | 'otp';
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
+  const postAuthPath = getSafeReturnPath(returnTo);
   const { user, signIn: contextSignIn } = useAuthContext();
-  const { signup, sendOTP, verifyOTP, loading, error, clearError } = useAuth();
+  const { signup, loginWithPassword, verifyOTP, loading, error, clearError } = useAuth();
 
   const [screen, setScreen] = useState<Screen>('options');
   const [identifier, setIdentifier] = useState('');
@@ -26,11 +31,13 @@ const Auth = () => {
   const [signupName, setSignupName] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupMobile, setSignupMobile] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signinPassword, setSigninPassword] = useState('');
 
-  // Redirect already-logged-in users
+  // Redirect already-logged-in users back to where they came from
   useEffect(() => {
-    if (user) navigate(ROUTES.HOME, { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(postAuthPath, { replace: true });
+  }, [user, navigate, postAuthPath]);
 
   useEffect(() => {
     if (!isTimerActive) return;
@@ -47,14 +54,34 @@ const Auth = () => {
     setIsTimerActive(false);
   };
 
+  const completeSignIn = (identifierValue: string, userData: ReturnType<typeof extractAuthUser>) => {
+    if (!userData) {
+      throw new Error('No auth token in response');
+    }
+
+    const token =
+      userData.user_token ??
+      userData.token ??
+      userData.access_token;
+
+    if (!token) {
+      throw new Error('No auth token in response');
+    }
+
+    const userId = userData.id != null ? String(userData.id) : undefined;
+    contextSignIn({ identifier: identifierValue, token, userId, name: userData.name });
+    toast.success('Signed in successfully!');
+    navigate(postAuthPath, { replace: true });
+  };
+
   // ── Signup ──────────────────────────────────────────────────────────────
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const signupRes = await signup(signupName, signupEmail, signupMobile);
+      const signupRes = await signup(signupName, signupEmail, signupMobile, signupPassword);
       console.log('Signup response:', signupRes);
       setIdentifier(signupEmail);
-      const signupOtp = signupRes?.OTP ? String(signupRes.OTP) : null;
+      const signupOtp = signupRes?.OTP ? String(signupRes.OTP) : signupRes?.otp ? String(signupRes.otp) : null;
       if (signupOtp) {
         setOtp(signupOtp.padEnd(6, '').slice(0, 6).split(''));
         toast.success(`Account created! Your OTP is: ${signupOtp}`, { duration: 30000 });
@@ -70,22 +97,13 @@ const Auth = () => {
   };
 
   // ── Sign-in ─────────────────────────────────────────────────────────────
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handlePasswordSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await sendOTP(identifier);
-      const otpValue = response?.otp ? String(response.otp) : null;
-      if (otpValue) {
-        setOtp(otpValue.padEnd(6, '').slice(0, 6).split(''));
-        toast.success(`Your OTP is: ${otpValue}`, { duration: 30000 });
-      } else {
-        toast.success('OTP sent! Check your email.');
-      }
-      setScreen('otp');
-      setOtpTimer(180);
-      setIsTimerActive(true);
+      const response = await loginWithPassword(identifier, signinPassword);
+      completeSignIn(identifier, extractAuthUser(response.data));
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Failed to send OTP');
+      toast.error(err?.response?.data?.message || err?.message || 'Sign in failed');
     }
   };
 
@@ -111,18 +129,7 @@ const Auth = () => {
 
     try {
       const response = await verifyOTP(otpCode, identifier);
-      const token =
-        response?.data?.user_token ??
-        response?.data?.token ??
-        response?.data?.access_token;
-      if (!token) throw new Error('No auth token in response');
-      const userId = response?.data?.id != null
-        ? String(response.data.id)
-        : undefined;
-
-      contextSignIn({ identifier, token, userId, name: response?.data?.name });
-      toast.success('Signed in successfully!');
-      navigate(ROUTES.HOME, { replace: true });
+      completeSignIn(identifier, extractAuthUser(response.data));
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || 'Invalid OTP');
     }
@@ -185,6 +192,10 @@ const Auth = () => {
                 <Label htmlFor="page-signup-mobile">Mobile Number</Label>
                 <Input id="page-signup-mobile" type="tel" placeholder="10-digit mobile number" value={signupMobile} onChange={(e) => setSignupMobile(e.target.value)} required className="h-12" />
               </div>
+              <div className="space-y-1">
+                <Label htmlFor="page-signup-password">Password</Label>
+                <Input id="page-signup-password" type="password" placeholder="Create a password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required className="h-12" />
+              </div>
 
               {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -208,18 +219,22 @@ const Auth = () => {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h2 className="text-2xl font-semibold text-gray-900 mb-1">Sign In</h2>
-            <p className="text-sm text-gray-500 mb-6">Enter your email or mobile number</p>
+            <p className="text-sm text-gray-500 mb-6">Enter your email or mobile and password</p>
 
-            <form onSubmit={handleSendOtp} className="space-y-4">
+            <form onSubmit={handlePasswordSignIn} className="space-y-4">
               <div className="space-y-1">
                 <Label htmlFor="page-signin-id">Email or Mobile</Label>
                 <Input id="page-signin-id" type="text" placeholder="name@example.com or 9876543210" value={identifier} onChange={(e) => setIdentifier(e.target.value)} autoFocus required className="h-12" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="page-signin-password">Password</Label>
+                <Input id="page-signin-password" type="password" placeholder="Enter your password" value={signinPassword} onChange={(e) => setSigninPassword(e.target.value)} required className="h-12" />
               </div>
 
               {error && <p className="text-sm text-red-600">{error}</p>}
 
               <Button type="submit" disabled={loading} className="w-full h-12 bg-[#8B5E3C] hover:bg-[#5C4033] text-white font-medium rounded-lg">
-                {loading ? 'Sending OTP...' : 'Send OTP'}
+                {loading ? 'Signing in...' : 'Sign In'}
               </Button>
 
               <p className="text-center text-sm text-gray-500">
@@ -267,9 +282,14 @@ const Auth = () => {
                     type="button"
                     className="text-[#8B5E3C] hover:underline font-medium"
                     onClick={async () => {
+                      if (!signupEmail || !signupPassword) {
+                        toast.info('You can sign in with your password from the Sign In screen.');
+                        return;
+                      }
+
                       try {
-                        const res = await sendOTP(identifier);
-                        const resendOtp = res?.otp ? String(res.otp) : null;
+                        const res = await signup(signupName, signupEmail, signupMobile, signupPassword);
+                        const resendOtp = res?.OTP ? String(res.OTP) : res?.otp ? String(res.otp) : null;
                         if (resendOtp) {
                           setOtp(resendOtp.padEnd(6, '').slice(0, 6).split(''));
                           toast.success(`Your OTP is: ${resendOtp}`, { duration: 30000 });
@@ -279,7 +299,7 @@ const Auth = () => {
                         setOtpTimer(180);
                         setIsTimerActive(true);
                       } catch {
-                        // error shown via hook
+                        toast.info('Account already created. Sign in with your password instead.');
                       }
                     }}
                   >

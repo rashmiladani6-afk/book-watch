@@ -10,6 +10,7 @@ import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { Toaster } from '@/shared/components/ui/toaster';
 import { Toaster as Sonner } from '@/shared/components/ui/sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
+import AuthDataSync from '@/components/AuthDataSync';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -35,6 +36,7 @@ export const Providers = ({ children }: ProvidersProps) => {
                     }}
                 >
                     <AuthProvider>
+                        <AuthDataSync />
                         {children}
                         <Toaster />
                         <Sonner />

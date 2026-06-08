@@ -1,23 +1,20 @@
-import { useState, useRef, useEffect } from "react";
-import { movies as allMovies, ContentType } from "@/data/movies";
-
-import MovieCard from "@/features/movies/components/MovieCard";
-
+import { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
 import TimerCarousel from "@/shared/components/common/TimerCarousel";
 import { Button } from "@/shared/components/ui/button";
-import { ChevronRight, ChevronLeft, ChevronDown, Briefcase, Film, Trophy, Music, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePopularEvents } from "@/features/events/hooks/usePopularEvents";
 import type { PopularEvent } from "@/features/events/services/eventService";
+import EventLikeButton from "@/features/events/components/EventLikeButton";
 import { useAuth } from "@/contexts/AuthContext";
-import { Link } from "react-router-dom";
-import { generateRoute } from "@/shared/constants/routes";
+import { generateRoute, ROUTES } from "@/shared/constants/routes";
+import { getAuthUrl } from "@/lib/auth/authRedirect";
 
 const getPopularEventImageUrl = (image: string | null | undefined) => {
   if (!image) return null;
   if (image.startsWith("http://") || image.startsWith("https://")) return image;
-  // Use dev proxy so images load from garbatown.com without CORS issues
   return `/garba-auth${image.startsWith("/") ? image : `/${image}`}`;
 };
 
@@ -28,218 +25,18 @@ const formatEventDate = (dateStr: string) => {
   return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
-// TODO: If needed, import play button asset from the centralized assets path:
-// import playButton from "@/assets/image/play-button/Watch-new-movies-at-home-every-Friday-3.png";
+const getEventEntryCount = (event: PopularEvent) =>
+  event.attendees_count ?? event.attendee_count ?? event.booked_tickets ?? 0;
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-/* 📂 ESSENTIAL EVENTS DATA (Specific Items)                                 */
-/* -------------------------------------------------------------------------- */
-const essentialEvents = [
-  {
-    id: 'avatar',
-    listTitle: 'Avatar: The Way of Water',
-    listDesc: 'Sci-Fi • 3h 12m',
-    heroTitle: 'Avatar: The Way of Water',
-    heroSubtitle: 'Set more than a decade after the events of the first film, learn the story of the Sully family and the trouble that follows them.',
-    buttonText: 'Book Now',
-    color: 'bg-[#0B5394]', // Ocean Blue
-    textColor: 'text-white',
-    tags: ['UA', 'Sci-Fi', 'IMAX'],
-    image: 'https://assets-in.bmscdn.com/discovery-catalog/events/tr:w-400,h-600,bg-CCCCCC:w-400.0,h-660.0,cm-pad_resize,bg-000000,fo-top:l-image,i-discovery-catalog@@icons@@star-icon-202203010609.png,lx-24,ly-615,w-29,l-end:l-text,ie-OC44LzEwICAxLjZLKyBWb3Rlcw%3D%3D,fs-29,co-FFFFFF,ly-612,lx-70,pa-8_0_0_0,l-end:l-text,ie-UFJPTU9URUQ%3D,co-FFFFFF,bg-DC354B,ff-Roboto,fs-20,lx-N16,ly-12,lfo-top_right,pa-12_14_12_14,r-6,l-end/et00443704-njctmveaay-portrait.jpg',
-    icon: <Film size={24} />,
-    category: 'movie'
-  },
-  {
-    id: 'dune',
-    listTitle: 'Dune: Part Two',
-    listDesc: 'Sci-Fi • 2h 46m',
-    heroTitle: 'Dune: Part Two',
-    heroSubtitle: 'Paul Atreides unites with Chani and the Fremen while on a warpath of revenge.',
-    buttonText: 'Book Now',
-    color: 'bg-[#C19A6B]', // Sand/Gold
-    textColor: 'text-white',
-    tags: ['UA', 'Sci-Fi', 'Blockbuster'],
-    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-Q3wmpqxNyP8TXdlT4WSsCsPj15Dak_IEIQ&s',
-    icon: <Film size={24} />,
-    category: 'movie'
-  },
-  {
-    id: 'ipl',
-    listTitle: 'IPL 2025: MI vs CSK',
-    listDesc: 'Cricket • Wankhede Stadium',
-    heroTitle: 'MI vs CSK - El Clasico',
-    heroSubtitle: 'The biggest rivalry in cricket history returns. Don\'t miss the action live.',
-    buttonText: 'Book Now',
-    color: 'bg-[#9A9D9B]', // MI Blue
-    textColor: 'text-white',
-    tags: ['Sports', 'Cricket', 'Live'],
-    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQdc4sZ7IWMPOHIIjNDpVx7eZMQCkiRkjAitg&s',
-    icon: <Trophy size={24} />,
-    category: 'event'
-  },
-  {
-    id: 'coldplay',
-    listTitle: 'Coldplay: MOTS',
-    listDesc: 'Concert • DY Patil Stadium',
-    heroTitle: 'Coldplay: Music of the Spheres',
-    heroSubtitle: 'Experience the magical world tour live in Mumbai. A spectacle of lights and music.',
-    buttonText: 'Join Waitlist',
-    color: 'bg-[#6a3093]', // Purple
-    textColor: 'text-white',
-    tags: ['Music', 'Live', 'Concert'],
-    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTv-S5DxtEmv6yIU5mzqj3whQdbAVc6Q2NURQ&s',
-    icon: <Music size={24} />,
-    category: 'event'
-  },
-  {
-    id: 'oppenheimer',
-    listTitle: 'Oppenheimer',
-    listDesc: 'Biography • 3h 00m',
-    heroTitle: 'Oppenheimer',
-    heroSubtitle: 'The story of American scientist J. Robert Oppenheimer and his role in the development of the atomic bomb.',
-    buttonText: 'Book Now',
-    color: 'bg-[#3E2723]', // Dark Brown
-    textColor: 'text-white',
-    tags: ['A', 'Biography', 'Drama'],
-    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSNbm28EZhooHofMhqRbjqYXm58jMZo87-n1A&s',
-    icon: <Film size={24} />,
-    category: 'movie'
-  }
-];
+const sortByRatingThenEntries = (events: PopularEvent[]) =>
+  [...events].sort((a, b) => {
+    if (b.rating !== a.rating) return b.rating - a.rating;
+    return getEventEntryCount(b) - getEventEntryCount(a);
+  });
 
-/* -------------------------------------------------------------------------- */
-/* 🎞 UNIVERSAL CAROUSEL COMPONENT                                           */
-/* -------------------------------------------------------------------------- */
-const CarouselSection = ({
-  title,
-  movies,
-  keyPrefix,
-  useLiveEvents = false,
-  useMusicStudio = false,
-  useLaughterTherapy = false,
-  usePopularEvents = false,
-  useLatestPlays = false,
-  useTopTopGames_SportsEvents = false,
-  useFunACtivities = false
-}: {
-  title: string;
-  movies: any[];
-  keyPrefix: string;
-  useLiveEvents?: boolean;
-  useMusicStudio?: boolean;
-  useLaughterTherapy?: boolean;
-  usePopularEvents?: boolean;
-  useLatestPlays?: boolean;
-  useTopTopGames_SportsEvents?: boolean
-  useFunACtivities?: boolean
-}) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (direction: "left" | "right") => {
-    if (scrollRef.current) {
-      const amount = 300;
-      scrollRef.current.scrollBy({
-        left: direction === "left" ? -amount : amount,
-        behavior: "smooth",
-      });
-    }
-  };
-
-  return (
-    <section className="container pb-12">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-
-        {/* all title color browen */}
-        <h2
-          className="text-2xl font-bold bg-gradient-to-r from-[#6d492e] via-[#a67149] to-[#d0c0b0] text-transparent bg-clip-text"
-        >
-          {title}
-        </h2>
-
-
-        <Button
-          variant="ghost"
-          className="text-[#8B5E3C] hover:text-white hover:bg-[#E6D8C3]"
-        >
-          See All
-          <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* LIVE EVENTS GRID (NO CAROUSEL) */}
-      {useLiveEvents ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {movies.map((movie) => (
-            <LiveEvents
-              key={`${keyPrefix}-${movie.id}`}
-              movie={movie}
-              inCarousel={false}
-            />
-          ))}
-        </div>
-      ) : (
-        /* -------------------------------------------------------------- */
-        /* DEFAULT CAROUSEL (Movies, Music Studio, Laughter Therapy etc.) */
-        /* -------------------------------------------------------------- */
-        <div className="relative group">
-          {/* Left arrow */}
-          <button
-            onClick={() => scroll("left")}
-            className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg rounded-full p-3 z-10 opacity-0 group-hover:opacity-100 transition -ml-5"
-          >
-            <ChevronLeft className="h-6 w-6 text-gray-800" />
-          </button>
-
-          {/* Right arrow */}
-          <button
-            onClick={() => scroll("right")}
-            className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg rounded-full p-3 z-10 opacity-0 group-hover:opacity-100 transition -mr-5"
-          >
-            <ChevronRight className="h-6 w-6 text-gray-800" />
-          </button>
-
-          {/* Scroll container */}
-          <div
-            ref={scrollRef}
-            className="overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide -mx-4 px-4"
-          >
-            <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
-
-            <div className="flex gap-4 pb-4">
-              {movies.map((movie) => (
-                <MovieCard
-                  key={`${keyPrefix}-${movie.id}`}
-                  movie={movie}
-                  inCarousel={true}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-};
-
-/* -------------------------------------------------------------------------- */
-/* 🏠 HOME PAGE                                                               */
-/* -------------------------------------------------------------------------- */
 const Home = () => {
-  const [selectedCategory, setSelectedCategory] = useState<ContentType | "all">(
-    "all"
-  );
-  const [activeEvent, setActiveEvent] = useState(essentialEvents[0]);
-  const [filterType, setFilterType] = useState<'all' | 'movie' | 'event'>('all');
   const [searchQuery, setSearchQuery] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const trendingGamesRef = useRef<HTMLDivElement>(null);
-  const trendingAppsRef = useRef<HTMLDivElement>(null);
-  const featuredGamesRef = useRef<HTMLDivElement>(null);
-  const mustWatchRef = useRef<HTMLDivElement>(null);
-
-  // Popular events from Garba Town API (user-token based)
   const { user, session, loading: authLoading } = useAuth();
   const {
     data: popularEventsData,
@@ -249,15 +46,19 @@ const Home = () => {
     session?.access_token,
     !!user && !!session?.access_token && !authLoading,
   );
-  const popularEvents = popularEventsData?.data ?? [];
-  const getEventEntryCount = (event: PopularEvent) =>
-    event.attendees_count ?? event.attendee_count ?? event.booked_tickets ?? 0;
 
-  const sortByRatingThenEntries = (events: PopularEvent[]) =>
-    [...events].sort((a, b) => {
-      if (b.rating !== a.rating) return b.rating - a.rating;
-      return getEventEntryCount(b) - getEventEntryCount(a);
-    });
+  const popularEvents = popularEventsData?.data ?? [];
+
+  const filteredEvents = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return popularEvents;
+    return popularEvents.filter(
+      (event) =>
+        event.name.toLowerCase().includes(query) ||
+        event.address?.toLowerCase().includes(query) ||
+        event.organizer?.toLowerCase().includes(query),
+    );
+  }, [popularEvents, searchQuery]);
 
   const now = new Date();
   const dayOfWeek = now.getDay();
@@ -267,7 +68,7 @@ const Home = () => {
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 7);
 
-  const weeklyEvents = popularEvents.filter((event) => {
+  const weeklyEvents = filteredEvents.filter((event) => {
     if (!event.start_date) return false;
     const eventDate = new Date(event.start_date.replace(" ", "T"));
     if (Number.isNaN(eventDate.getTime())) return false;
@@ -275,164 +76,25 @@ const Home = () => {
   });
 
   const topRatedEvents = sortByRatingThenEntries(
-    weeklyEvents.length > 0 ? weeklyEvents : popularEvents,
+    weeklyEvents.length > 0 ? weeklyEvents : filteredEvents,
   );
-  const latestAddedEvents = [...popularEvents].sort((a, b) => Number(b.id) - Number(a.id));
-  const showPopularEvents = !!user && popularEvents.length > 0;
+  const latestAddedEvents = [...filteredEvents].sort((a, b) => Number(b.id) - Number(a.id));
+  const showPopularEvents = !!user && filteredEvents.length > 0;
   const showPopularEventsLoading = !!user && popularEventsLoading;
 
   const scroll = (direction: "left" | "right") => {
-    if (scrollRef.current) {
-      const amount = 400;
-      scrollRef.current.scrollBy({
-        left: direction === "left" ? -amount : amount,
-        behavior: "smooth",
-      });
-    }
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({
+      left: direction === "left" ? -400 : 400,
+      behavior: "smooth",
+    });
   };
-
-  // Auto scroll for Best Selling Games section
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (scrollRef.current) {
-        const maxScroll = scrollRef.current.scrollWidth - scrollRef.current.clientWidth;
-        const currentScroll = scrollRef.current.scrollLeft;
-
-        if (currentScroll >= maxScroll) {
-          // Reset to start
-          scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-          // Scroll right
-          scrollRef.current.scrollBy({ left: 220, behavior: "smooth" });
-        }
-      }
-    }, 3000); // Auto scroll every 3 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Auto scroll for Trending Games
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (trendingGamesRef.current) {
-        const maxScroll = trendingGamesRef.current.scrollWidth - trendingGamesRef.current.clientWidth;
-        const currentScroll = trendingGamesRef.current.scrollLeft;
-
-        if (currentScroll >= maxScroll) {
-          trendingGamesRef.current.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-          trendingGamesRef.current.scrollBy({ left: 300, behavior: "smooth" });
-        }
-      }
-    }, 3500);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Auto scroll for Trending Apps
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     if (trendingAppsRef.current) {
-  //       const maxScroll = trendingAppsRef.current.scrollWidth - trendingAppsRef.current.clientWidth;
-  //       const currentScroll = trendingAppsRef.current.scrollLeft;
-
-  //       if (currentScroll >= maxScroll) {
-  //         trendingAppsRef.current.scrollTo({ left: 0, behavior: "smooth" });
-  //       } else {
-  //         trendingAppsRef.current.scrollBy({ left: 300, behavior: "smooth" });
-  //       }
-  //     }
-  //   }, 4000);
-  //   return () => clearInterval(interval);
-  // }, []);
-
-  // Auto scroll for Featured Free Games
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (featuredGamesRef.current) {
-        const maxScroll = featuredGamesRef.current.scrollWidth - featuredGamesRef.current.clientWidth;
-        const currentScroll = featuredGamesRef.current.scrollLeft;
-
-        if (currentScroll >= maxScroll) {
-          featuredGamesRef.current.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-          featuredGamesRef.current.scrollBy({ left: 300, behavior: "smooth" });
-        }
-      }
-    }, 4500);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // // Auto scroll for Must Watch Movies
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     if (mustWatchRef.current) {
-  //       const maxScroll = mustWatchRef.current.scrollWidth - mustWatchRef.current.clientWidth;
-  //       const currentScroll = mustWatchRef.current.scrollLeft;
-
-  //       if (currentScroll >= maxScroll) {
-  //         mustWatchRef.current.scrollTo({ left: 0, behavior: "smooth" });
-  //       } else {
-  //         mustWatchRef.current.scrollBy({ left: 300, behavior: "smooth" });
-  //       }
-  //     }
-  //   }, 5000);
-
-  //   return () => clearInterval(interval);
-  // }, []);
-
-  // ADD FOOTER STATE HERE
-  // Auto scroll for Must Watch Movies
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (mustWatchRef.current) {
-        const maxScroll = mustWatchRef.current.scrollWidth - mustWatchRef.current.clientWidth;
-        const currentScroll = mustWatchRef.current.scrollLeft;
-
-        if (currentScroll >= maxScroll) {
-          mustWatchRef.current.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-          mustWatchRef.current.scrollBy({ left: 300, behavior: "smooth" });
-        }
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-
-  /* SEARCH + CATEGORY FILTER */
-  const filteredMovies = allMovies.filter((movie) => {
-    const matchCategory =
-      selectedCategory === "all" || movie.type === selectedCategory;
-
-    const matchSearch =
-      searchQuery === "" ||
-      movie.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      movie.genre.some((g) =>
-        g.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-
-    return matchCategory && matchSearch;
-  });
-
-  /* CATEGORY ARRAYS */
-  const recommendedMovies = filteredMovies.filter((m) => m.type === "movies");
-  const streamMovies = filteredMovies.filter((m) => m.type === "stream");
-  const eventMovies = filteredMovies.filter((m) => m.type === "events");
-  const playMovies = filteredMovies.filter((m) => m.type === "plays");
-  const sportMovies = filteredMovies.filter((m) => m.type === "sports");
-  const activityMovies = filteredMovies.filter((m) => m.type === "activities");
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
-      {/* NAV + SEARCH */}
       <Header onSearch={setSearchQuery} />
 
-      {/* TIMER CAROUSEL - Microsoft Store Style */}
       <TimerCarousel
-        movies={filteredMovies.length ? filteredMovies : allMovies}
         eventSlides={topRatedEvents.map((event) => ({
           id: event.id,
           title: event.name,
@@ -455,7 +117,6 @@ const Home = () => {
         }))}
       />
 
-      {/* POPULAR EVENTS — Garba Town popular_events API */}
       <section className="py-8 bg-[#F5F5F5]">
         <div className="container">
           <div className="flex items-center justify-between mb-6">
@@ -463,9 +124,15 @@ const Home = () => {
               Popular events
               <ChevronRight size={20} />
             </h2>
+            {user && (
+              <Link to="/events/list">
+                <Button variant="outline" size="sm">
+                  View all
+                </Button>
+              </Link>
+            )}
           </div>
 
-          {/* Horizontal Scrollable Cards */}
           <div className="relative group">
             <div
               ref={scrollRef}
@@ -486,13 +153,12 @@ const Home = () => {
                 ))}
 
               {showPopularEvents &&
-                topRatedEvents.slice(0, 10).map((event: PopularEvent, index) => {
+                topRatedEvents.slice(0, 10).map((event, index) => {
                   const imageUrl = getPopularEventImageUrl(event.image);
 
                   return (
-                    <Link
+                    <div
                       key={event.id}
-                      to={generateRoute.eventDetail(event.id)}
                       className="flex-none w-[300px] bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 snap-start relative"
                     >
                       {index < 3 && (
@@ -503,35 +169,50 @@ const Home = () => {
                         </div>
                       )}
 
-                      <div className="relative h-[400px] bg-gray-200">
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={event.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] text-white text-4xl font-bold">
-                            {event.name.charAt(0)}
-                          </div>
-                        )}
+                      <div className="absolute top-2 right-2 z-10">
+                        <EventLikeButton
+                          eventId={event.id}
+                          isLiked={Boolean(event.is_like)}
+                          userToken={session?.access_token}
+                        />
                       </div>
 
-                      <div className="p-3">
-                        <h3 className="font-semibold text-sm text-[#3E2723] mb-1 line-clamp-2 h-10">
-                          {event.name}
-                        </h3>
-                        <p className="text-xs text-gray-500 mb-1 line-clamp-1">
-                          {event.address || event.organizer}
-                        </p>
-                        <p className="text-xs text-gray-400 mb-1">
-                          {formatEventDate(event.start_date)}
-                        </p>
-                        <p className="text-sm font-bold text-[#8B5E3C]">
-                          {event.price ? `₹ ${event.price}` : "See details"}
-                        </p>
-                      </div>
-                    </Link>
+                      <Link to={generateRoute.eventDetail(event.id)}>
+                        <div className="relative h-[400px] bg-gray-200">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={event.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] text-white text-4xl font-bold">
+                              {event.name.charAt(0)}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="p-3">
+                          <h3 className="font-semibold text-sm text-[#3E2723] mb-1 line-clamp-2 h-10">
+                            {event.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 mb-1 line-clamp-1">
+                            {event.address || event.organizer}
+                          </p>
+                          <p className="text-xs text-gray-400 mb-1">
+                            {formatEventDate(event.start_date)}
+                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-bold text-[#8B5E3C]">
+                              {event.price ? `₹ ${event.price}` : "See details"}
+                            </p>
+                            {event.rating > 0 && (
+                              <p className="text-xs text-gray-500">{event.rating.toFixed(1)}/5</p>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    </div>
                   );
                 })}
 
@@ -540,7 +221,7 @@ const Home = () => {
                   <p className="text-sm text-gray-600 mb-4">
                     Sign in to view popular events from Garba Town.
                   </p>
-                  <Link to="/auth">
+                  <Link to={getAuthUrl(ROUTES.HOME)}>
                     <Button className="bg-[#8B5E3C] hover:bg-[#5C4033] text-white">
                       Sign in
                     </Button>
@@ -554,344 +235,39 @@ const Home = () => {
                 </div>
               )}
 
-              {!showPopularEventsLoading && user && !popularEventsError && popularEvents.length === 0 && (
+              {!showPopularEventsLoading && user && !popularEventsError && filteredEvents.length === 0 && (
                 <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm text-gray-600">
-                  No popular events available right now.
+                  {searchQuery.trim()
+                    ? "No events match your search."
+                    : "No popular events available right now."}
                 </div>
               )}
             </div>
 
-            {/* Scroll Arrows */}
-            <button
-              onClick={() => scroll("left")}
-              className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 z-10 opacity-0 group-hover:opacity-100 transition -ml-4"
-            >
-              <ChevronLeft className="h-6 w-6 text-gray-800" />
-            </button>
-
-            <button
-              onClick={() => scroll("right")}
-              className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 z-10 opacity-0 group-hover:opacity-100 transition -mr-4"
-            >
-              <ChevronRight className="h-6 w-6 text-gray-800" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* TRENDING MOVIES - Horizontal Scroll */}
-      <section className="py-8 bg-white">
-        <div className="container">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-[#3E2723] flex items-center gap-2">
-              Trending movies
-              <ChevronRight size={20} />
-            </h2>
-          </div>
-
-          <div
-            ref={trendingGamesRef}
-            className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-4"
-          >
-            {recommendedMovies.slice(0, 8).map((movie) => (
-              <div
-                key={movie.id}
-                onClick={() => window.location.href = `/movie/${movie.id}`}
-                className="flex items-center gap-3 flex-none w-[280px] p-3 bg-[#F9F9F9] rounded-lg shadow-sm hover:shadow-md cursor-pointer transition-all duration-200"
-              >
-                <img
-                  src={movie.image}
-                  alt={movie.title}
-                  className="w-20 h-20 object-cover rounded flex-none"
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-md text-[#3E2723] truncate">
-                    {movie.title}
-                  </h3>
-                  <p className="text-sm text-gray-600">{movie.genre[0]}</p>
-                  <p className="text-sm font-semibold text-[#8B5E3C] mt-1">
-                    {movie.theaters && movie.theaters[0]?.showTimes[0]
-                      ? `₹ ${movie.theaters[0].showTimes[0].price}.00`
-                      : 'Free'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* TRENDING EVENTS - Horizontal Scroll */}
-      <section className="py-8 bg-white">
-        <div className="container">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-[#3E2723] flex items-center gap-2">
-              Trending events
-              <ChevronRight size={20} />
-            </h2>
-          </div>
-
-          <div
-            ref={trendingAppsRef}
-            className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-4"
-          >
-            {allMovies.filter(m => ["5", "6", "9", "10"].includes(m.id)).map((movie) => (
-              <div
-                key={movie.id}
-                onClick={() => window.location.href = `/movie/${movie.id}`}
-                className="flex items-center gap-3 flex-none w-[280px] p-3 bg-[#F9F9F9] rounded-lg shadow-sm hover:shadow-md cursor-pointer transition-all duration-200"
-              >
-                <img
-                  src={movie.image}
-                  alt={movie.title}
-                  className="w-20 h-20 object-cover rounded flex-none"
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-md text-[#3E2723] truncate">
-                    {movie.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 capitalize">
-                    {movie.genre[0] || movie.type}
-                  </p>
-                  <p className="text-sm font-semibold text-[#8B5E3C] mt-1">
-                    {movie.theaters && movie.theaters[0]?.showTimes[0]
-                      ? `₹ ${movie.theaters[0].showTimes[0].price}.00`
-                      : 'Free'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-
-
-
-
-
-
-      {/* MUST-WATCH FREE MOVIES - Auto Scroll Horizontal */}
-      {/* MUST-WATCH FREE MOVIES - Auto Scroll Horizontal */}
-      <section className="py-12 bg-white">
-        <div className="container">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-[#3E2723] flex items-center gap-2">
-              Must-watch free movies
-              <ChevronRight size={20} />
-            </h2>
-          </div>
-
-          <div
-            ref={mustWatchRef}
-            className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-8 snap-x snap-mandatory px-4"
-          >
-            {/* Chunk movies into pairs */}
-            {(() => {
-              const relevantMovies = allMovies.filter(m => ["1", "2", "4", "5", "6", "9", "10", "11", "7", "8", "3", "12", "13", "14", "15"].includes(m.id)).slice(0, 20);
-              const pairs = [];
-              for (let i = 0; i < relevantMovies.length; i += 2) {
-                pairs.push(relevantMovies.slice(i, i + 2));
-              }
-              return pairs.map((pair, pairIndex) => (
-                <div
-                  key={pairIndex}
-                  className="flex-none w-[300px] flex flex-col gap-3 p-3 rounded border border-gray-100 transition-all duration-300 snap-center"
+            {showPopularEvents && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => scroll("left")}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 z-10 opacity-0 group-hover:opacity-100 transition -ml-4"
                 >
-                  {pair.map((movie, index) => (
-                    <div
-                      key={movie.id}
-                      onClick={() => window.location.href = `/movie/${movie.id}`}
-                      className="relative aspect-[3/4] w-full rounded overflow-hidden shadow-md cursor-pointer group"
-                    >
-                      <img
-                        src={movie.image}
-                        alt={movie.title}
-                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-
-                      {/* Content Overlay */}
-                      <div className="absolute bottom-0 left-0 right-0 p-3">
-                        <div className="flex items-end justify-between">
-                          <div>
-                            {pairIndex === 0 && index === 0 && (
-                              <span className="inline-block px-1.5 py-0.5 mb-1 bg-[#107C10] text-white text-[8px] font-bold uppercase tracking-wider rounded-full">
-                                Featured
-                              </span>
-                            )}
-                            <h3 className="text-sm font-bold text-white mb-0.5 leading-tight line-clamp-1">{movie.title}</h3>
-                            <div className="flex items-center gap-1.5 text-[10px] text-gray-300 font-medium">
-                              <span className="px-1 py-0.5 bg-white/20 backdrop-blur rounded text-[8px]">12+</span>
-                              <span className="text-[#107C10] font-bold text-[8px]">Free</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ));
-            })()}
+                  <ChevronLeft className="h-6 w-6 text-gray-800" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scroll("right")}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 z-10 opacity-0 group-hover:opacity-100 transition -mr-4"
+                >
+                  <ChevronRight className="h-6 w-6 text-gray-800" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </section>
-
-      {/* ESSENTIAL EVENTS - Dynamic Section */}
-      <section className="py-8 bg-white/50">
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-            {/* Left Column: Dynamic Hero Card */}
-            <div className={`lg:col-span-8 ${activeEvent.color} rounded-xl p-8 text-white relative overflow-hidden transition-all duration-500 shadow-xl`}>
-              <div className="relative z-10 h-full flex flex-col justify-between min-h-[300px]">
-                <div>
-                  <h2 className="text-4xl font-bold mb-4">{activeEvent.heroTitle}</h2>
-                  <p className="text-lg mb-6 opacity-90 max-w-2xl text-[18px]">{activeEvent.heroSubtitle}</p>
-
-                  <button className="px-8 py-3 bg-white text-[#3E2723] font-bold rounded-lg hover:bg-gray-100 transition-all shadow-md">
-                    {activeEvent.buttonText}
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-4 mt-8">
-                  {activeEvent.tags.map((tag, idx) => (
-                    <span key={idx} className="bg-white/20 backdrop-blur-md px-3 py-1 rounded text-sm font-medium border border-white/10">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Background Icon/Graphic & Hero Image */}
-              <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-38 white-overlay">
-                <img
-                  src={activeEvent.image}
-                  alt={activeEvent.heroTitle}
-                  className="w-full h-full object-cover mask-image-linear-gradient"
-                  style={{ maskImage: 'linear-gradient(to right, transparent, black)' }}
-                />
-              </div>
-              <div className="absolute -bottom-12 -right-12 opacity-10 transform rotate-12 scale-150">
-                {/* Can use a larger version of icon or specific graphic */}
-                <div className="w-96 h-96 bg-white rounded-full blur-3xl" />
-              </div>
-            </div>
-
-            {/* Right Column: Category List (Filter) with Checkboxes */}
-            <div className="lg:col-span-4 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <h3 className="text-xl font-bold text-[#3E2723] mb-4 flex items-center gap-2">
-                Trending Now
-                <ChevronRight className="w-5 h-5" />
-              </h3>
-
-              {/* Filter Tabs */}
-              <div className="flex gap-2 mb-6">
-                {['all', 'movie', 'event'].map(type => (
-                  <button
-                    key={type}
-                    onClick={() => setFilterType(type as any)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-full capitalize transition-all ${filterType === type
-                      ? 'bg-[#3E2723] text-white shadow-md'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                  >
-                    {type === 'all' ? 'All' : type + 's'}
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                {essentialEvents
-                  .filter(e => filterType === 'all' || e.category === filterType)
-                  .map((event) => (
-                    <div
-                      key={event.id}
-                      onClick={() => setActiveEvent(event)}
-                      className="flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50"
-                    >
-                      {/* Checkbox UI */}
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${activeEvent.id === event.id
-                        ? 'bg-[#E50914] border-[#E50914]'
-                        : 'border-gray-300 bg-white'
-                        }`}>
-                        {activeEvent.id === event.id && (
-                          <div className="w-2.5 h-2.5 bg-white rounded-sm" />
-                        )}
-                      </div>
-
-                      <div className="w-12 h-16 rounded overflow-hidden shadow-sm shrink-0">
-                        <img
-                          src={event.image}
-                          alt={event.listTitle}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-
-                      <div>
-                        <h4 className={`font-bold text-sm ${activeEvent.id === event.id ? 'text-black' : 'text-gray-700'}`}>
-                          {event.listTitle}
-                        </h4>
-                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                          {event.listDesc}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-
-
-      {/* FEATURED FREE MOVIES - Large Cards */}
-      < section className="py-8 bg-gradient-to-br from-[#1a472a] to-[#2d5016] text-white" >
-        <div className="container">
-          <div className="mb-6">
-            <h2 className="text-3xl font-bold mb-2">Featured free movies</h2>
-            <p className="text-white/80">Explore free movies to watch and find a new favorite</p>
-          </div>
-
-          <div
-            ref={featuredGamesRef}
-            className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-4"
-          >
-            {allMovies.slice(0, 10).map((movie) => (
-              <div
-                key={movie.id}
-                onClick={() => window.location.href = `/movie/${movie.id}`}
-                className="flex-none w-[280px] rounded-lg overflow-hidden shadow-xl hover:shadow-2xl cursor-pointer transform hover:scale-[1.02] transition-all duration-200"
-              >
-                <div className="relative h-[400px]">
-                  <img
-                    src={movie.image}
-                    alt={movie.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <div className="mb-2">
-                      <span className="px-2 py-1 bg-white/20 backdrop-blur-sm rounded text-xs">12+</span>
-                    </div>
-                    <h3 className="text-xl font-bold mb-1">{movie.title}</h3>
-                    <p className="text-sm text-white/80">{movie.genre.join(' • ')}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded transition-all">
-            See all
-          </button>
-        </div>
-      </section >
 
       <Footer />
-    </div >
+    </div>
   );
 };
 

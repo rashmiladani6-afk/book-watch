@@ -1,4 +1,8 @@
 import axios from "axios";
+import {
+  buildGarbaAuthHeaderVariants,
+  extractGarbaApiMessage,
+} from "@/lib/garba/apiAuth";
 
 const GARBA_PROXY_BASE = "/garba-auth";
 const CART_PENDING_KEY = "cart_pending_event";
@@ -8,34 +12,26 @@ const ADD_TO_CART_URL =
   `${GARBA_PROXY_BASE}/api/v1/odoo/add_to_cart`;
 const CART_DETAILS_URLS = [
   import.meta.env.VITE_GARBATOWN_CART_DETAILS_URL ??
-    `${GARBA_PROXY_BASE}/api/v1/user/cart_details`,
-  `${GARBA_PROXY_BASE}/api/v1/odoo/cart_details`,
+    `${GARBA_PROXY_BASE}/api/v1/odoo/cart_details`,
   `${GARBA_PROXY_BASE}/api/v1/odoo/cart_detail`,
+  `${GARBA_PROXY_BASE}/api/v1/user/cart_details`,
 ];
 const REMOVE_CART_URL =
   import.meta.env.VITE_GARBATOWN_REMOVE_CART_URL ??
   `${GARBA_PROXY_BASE}/api/v1/odoo/remove_cart`;
+const BUY_TICKET_URLS = [
+  import.meta.env.VITE_GARBATOWN_BUY_TICKET_URL ??
+    `${GARBA_PROXY_BASE}/api/v1/odoo/buy_ticket`,
+];
+const ORDER_SUMMARY_URL =
+  import.meta.env.VITE_GARBATOWN_ORDER_SUMMARY_URL ??
+  `${GARBA_PROXY_BASE}/api/v1/odoo/order_summary`;
 
 let resolvedCartHeader: Record<string, string> | null = null;
 let resolvedCartDetailsUrl: string | null = null;
+let resolvedBuyTicketUrl: string | null = null;
 
-const buildAuthHeaderVariants = (userToken?: string | null): Record<string, string>[] => {
-  const tokenFromStorage = localStorage.getItem("authToken");
-  const token = (userToken ?? tokenFromStorage ?? "").trim();
-  const normalizedToken = token.replace(/^Bearer\s+/i, "");
-
-  if (!normalizedToken) return [];
-
-  return [
-    { AuthorizationUserToken: normalizedToken },
-    { AuthorizationUserToken: `Bearer ${normalizedToken}` },
-    { Authorizationtoken: normalizedToken },
-    { Authorizationtoken: `Bearer ${normalizedToken}` },
-    { "Authorization-Token": normalizedToken },
-    { Authorization: normalizedToken },
-    { Authorization: `Bearer ${normalizedToken}` },
-  ];
-};
+const buildAuthHeaderVariants = buildGarbaAuthHeaderVariants;
 
 const prioritizeHeaders = (
   headers: Record<string, string>[],
@@ -103,6 +99,32 @@ export interface AddToCartResponse {
 export interface RemoveCartResponse {
   status: string;
   message?: string;
+}
+
+export interface BuyTicketResponse {
+  status: string;
+  message?: string;
+  data?: unknown;
+}
+
+export interface OrderSummaryData {
+  event_id: number;
+  event_name: string;
+  ticket_id: number;
+  ticket_type: string;
+  qty: number;
+  price: number;
+  subtotal: number;
+  platform_fee: number;
+  gst: number;
+  gst_amount: number;
+  total_amount: number;
+}
+
+export interface OrderSummaryResponse {
+  status: string;
+  message?: string;
+  data?: OrderSummaryData;
 }
 
 export interface CartEventDetail {
@@ -316,6 +338,9 @@ const parseFullCartDetail = (payload: unknown): FullCartDetail => {
   return { event, tickets };
 };
 
+const isCartDetailPayload = (payload: unknown): payload is CartDetailResponse =>
+  Boolean(payload && typeof payload === "object" && "status" in (payload as Record<string, unknown>));
+
 const fetchCartDetailFromApi = async (
   headers: Record<string, string>,
 ): Promise<{ items: CartItem[]; fullDetail: FullCartDetail; raw: CartDetailResponse }> => {
@@ -323,16 +348,19 @@ const fetchCartDetailFromApi = async (
     resolvedCartDetailsUrl
       ? [resolvedCartDetailsUrl, ...CART_DETAILS_URLS.filter((u) => u !== resolvedCartDetailsUrl)]
       : CART_DETAILS_URLS;
-  // In dev keep a single endpoint attempt to avoid request storms/log spam.
-  const urls = import.meta.env.DEV ? [fallbackUrls[0]] : fallbackUrls;
 
   let lastError: unknown = null;
 
-  for (const url of urls) {
+  for (const url of fallbackUrls) {
     try {
       const getResponse = await axios.get<CartDetailResponse>(url, { headers, timeout: 15000 });
+      if (!isCartDetailPayload(getResponse.data)) {
+        continue;
+      }
+
       const fullDetail = parseFullCartDetail(getResponse.data);
-      if (fullDetail.event || fullDetail.tickets.length > 0 || getResponse.data.status === "success") {
+      const hasCartContent = Boolean(fullDetail.event || fullDetail.tickets.length > 0);
+      if (hasCartContent || getResponse.data.status === "success") {
         resolvedCartDetailsUrl = url;
         const items = fullDetail.event
           ? [normalizeCartItem({ ...fullDetail.event, event_id: fullDetail.event.id })]
@@ -375,6 +403,11 @@ export const cartService = {
       const itemsFromResponse = extractCartItems(body.data);
       if (itemsFromResponse.length > 0) {
         savePendingCartItem(itemsFromResponse[0]);
+      } else if (body.status === "success") {
+        savePendingCartItem({
+          id: Number(eventId),
+          event_id: Number(eventId),
+        });
       }
 
       return { ...body, popup };
@@ -436,5 +469,97 @@ export const cartService = {
     });
     clearPendingCartItem();
     return response;
+  },
+
+  async getOrderSummary(
+    eventId: number | string,
+    ticketId: number | string,
+    qty: number,
+    userToken?: string | null,
+  ): Promise<OrderSummaryResponse> {
+    const normalizedQty = Math.max(1, Math.round(qty));
+
+    return requestWithHeaders(userToken, async (headers) => {
+      const response = await axios.post<OrderSummaryResponse>(
+        ORDER_SUMMARY_URL,
+        {
+          id: Number(eventId),
+          ticket_id: Number(ticketId),
+          qty: normalizedQty,
+        },
+        { headers, timeout: 15000 },
+      );
+      return response.data;
+    });
+  },
+
+  async buyTicket(
+    eventId: number | string,
+    ticketId: number | string,
+    qty: number,
+    userToken?: string | null,
+  ): Promise<BuyTicketResponse> {
+    const normalizedQty = Math.max(1, Math.round(qty));
+    const payload = {
+      id: Number(eventId),
+      ticket_id: Number(ticketId),
+      qty: normalizedQty,
+    };
+
+    const buyUrls = resolvedBuyTicketUrl
+      ? [resolvedBuyTicketUrl, ...BUY_TICKET_URLS.filter((url) => url !== resolvedBuyTicketUrl)]
+      : BUY_TICKET_URLS;
+
+    let lastError: unknown = null;
+    let lastResponse: BuyTicketResponse | null = null;
+
+    try {
+      return await requestWithHeaders(userToken, async (headers) => {
+        for (const url of buyUrls) {
+          try {
+            const response = await axios.post<BuyTicketResponse>(url, payload, {
+              headers,
+              timeout: 15000,
+              validateStatus: () => true,
+            });
+
+            const isHtmlError =
+              typeof response.data === "string" &&
+              (response.data as string).includes("<!DOCTYPE html>");
+
+            if (response.status === 404 || isHtmlError) {
+              lastResponse = {
+                status: "error",
+                message: "Buy ticket API is not available on the Garba Town server (404).",
+              };
+              continue;
+            }
+
+            if (response.data && typeof response.data === "object") {
+              const body = response.data as BuyTicketResponse;
+              lastResponse = body;
+              if (body.status === "success") {
+                resolvedBuyTicketUrl = url;
+                return body;
+              }
+            }
+          } catch (error: unknown) {
+            lastError = error;
+          }
+        }
+
+        if (lastResponse?.message) {
+          return lastResponse;
+        }
+
+        throw lastError ?? new Error("Could not buy ticket. Please try again.");
+      });
+    } catch (error: unknown) {
+      const message = extractGarbaApiMessage(error);
+      if (message) {
+        return { status: "error", message };
+      }
+      throw error;
+    }
   },
 };
