@@ -1,5 +1,5 @@
 import { useFavoriteEvents } from "@/features/events/hooks/useFavoriteEvents";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth/context/AuthContext";
 import { Card } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";

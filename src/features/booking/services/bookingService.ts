@@ -7,6 +7,7 @@ import { apiClient } from '@/shared/services/api/client';
 import { API_ENDPOINTS } from '@/shared/services/api/endpoints';
 import type { BookingData, Seat } from '@/shared/types/common';
 import type { ApiResponse } from '@/shared/types/api';
+import type { Json } from '@/lib/supabase/types';
 import { supabase } from '@/lib/supabase/client';
 
 export const bookingService = {
@@ -33,7 +34,7 @@ export const bookingService = {
                     theater_name: bookingData.theaterName,
                     show_time: bookingData.showTime,
                     show_date: bookingData.showDate,
-                    seats: bookingData.seats,
+                    seats: bookingData.seats as unknown as Json,
                     total_amount: bookingData.totalAmount,
                     payment_status: 'completed',
                     booking_status: 'confirmed',

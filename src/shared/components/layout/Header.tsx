@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, User, LogOut, MapPin, X, ArrowLeft, Heart, ShoppingCart } from "lucide-react";
+import { Search, User, LogOut, MapPin, X, ArrowLeft, ShoppingCart } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -7,19 +7,22 @@ import { toast } from "sonner";
 import { Label } from "@/shared/components/ui/label";
 import { ROUTES } from "@/shared/constants/routes";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
 } from "@/shared/components/ui/dialog";
-import { useAuth as useAuthContext } from "@/contexts/AuthContext";
-import { useAuth } from "../../../hooks/useAuth";
+import { useAuth as useAuthContext } from "@/features/auth/context/AuthContext";
+import { useAuthActions } from "@/features/auth/hooks/useAuthActions";
 import { extractAuthUser } from "@/features/auth/services/authService";
+import { AUTH_MODAL_EVENT } from "@/features/auth/components/AuthModalOpener";
 import { useCart } from "@/features/events/hooks/useCart";
+import { getCityCoordinates } from "@/features/location/constants/cityCoordinates";
+import { useUpdateLocation } from "@/features/location/hooks/useUpdateLocation";
+import {
+  getSavedCityName,
+  getSavedLocation,
+  saveCityName,
+  saveLocation,
+} from "@/features/location/utils/locationStorage";
 
 const popularCities = [
   { name: "Mumbai", icon: "🏢" },
@@ -44,6 +47,7 @@ const sortedCities = [...allCities].sort((a, b) => a.localeCompare(b));
 
 // ── Modal screen state ────────────────────────────────────────────────────
 type ModalScreen = 'options' | 'signup' | 'signin' | 'otp';
+type SigninMode = 'login' | 'forgot';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -52,6 +56,7 @@ interface HeaderProps {
 const Header = ({ onSearch }: HeaderProps) => {
   const [show, setShow] = useState(false);
   const [screen, setScreen] = useState<ModalScreen>('options');
+  const [signinMode, setSigninMode] = useState<SigninMode>('login');
 
   // shared identifier used for both sign-in and OTP screens
   const [identifier, setIdentifier] = useState("");
@@ -67,11 +72,12 @@ const Header = ({ onSearch }: HeaderProps) => {
   const [signinPassword, setSigninPassword] = useState("");
   const [postLoginPath, setPostLoginPath] = useState<string | null>(null);
 
-  const { user, session, signIn: contextSignIn, signOut: contextSignOut } = useAuthContext();
-  const { signup, loginWithPassword, verifyOTP, loading, error, clearError } = useAuth();
+  const { user, session, loading: authLoading, signIn: contextSignIn, signOut: contextSignOut } = useAuthContext();
+  const { signup, loginWithPassword, verifyOTP, forgotPassword, loading, error, clearError } = useAuthActions();
+  const updateLocation = useUpdateLocation(session?.access_token);
   const { data: cartData } = useCart(
     session?.access_token,
-    !!user && !!session?.access_token,
+    !authLoading && !!session?.access_token,
   );
   const cartItemCount = (cartData?.items?.length ?? 0) > 0 || cartData?.fullDetail?.event ? 1 : 0;
 
@@ -94,6 +100,7 @@ const Header = ({ onSearch }: HeaderProps) => {
   const handleClose = () => {
     setShow(false);
     setScreen('options');
+    setSigninMode('login');
     setIdentifier("");
     setSignupName(""); setSignupEmail(""); setSignupMobile("");
     setSignupPassword(""); setSigninPassword("");
@@ -130,10 +137,94 @@ const Header = ({ onSearch }: HeaderProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showAllCities, setShowAllCities] = useState(false);
-  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedCity, setSelectedCity] = useState(getSavedCityName);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [locationUpdating, setLocationUpdating] = useState(false);
 
-  const detectLocation = () => toast.info("Detecting your location...");
+  const applyLocation = async (
+    cityLabel: string,
+    latitude: number,
+    longitude: number,
+    options?: { requireAuth?: boolean },
+  ) => {
+    saveLocation({ city: cityLabel, latitude, longitude });
+    setSelectedCity(cityLabel);
+
+    if (!session?.access_token) {
+      if (options?.requireAuth !== false) {
+        toast.info("Sign in to load nearby events for your city");
+      }
+      return;
+    }
+
+    setLocationUpdating(true);
+    try {
+      const response = await updateLocation.mutateAsync({ latitude, longitude });
+      if (response.status !== "success") {
+        toast.error(response.message || "Could not update location");
+        return;
+      }
+      toast.success(`Location updated: ${cityLabel}`);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (err as Error)?.message ||
+        "Could not update location";
+      toast.error(message);
+    } finally {
+      setLocationUpdating(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleOpenAuthModal = (event: Event) => {
+      const returnTo = (event as CustomEvent<{ returnTo?: string }>).detail?.returnTo;
+      if (returnTo) {
+        setPostLoginPath(returnTo);
+      }
+      setScreen("options");
+      setShow(true);
+    };
+
+    window.addEventListener(AUTH_MODAL_EVENT, handleOpenAuthModal);
+    return () => window.removeEventListener(AUTH_MODAL_EVENT, handleOpenAuthModal);
+  }, []);
+
+  useEffect(() => {
+    if (!session?.access_token || authLoading) return;
+
+    const saved = getSavedLocation();
+    if (!saved) return;
+
+    void updateLocation.mutateAsync({
+      latitude: saved.latitude,
+      longitude: saved.longitude,
+    });
+  }, [session?.access_token, authLoading]);
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported in this browser");
+      return;
+    }
+
+    setLocationUpdating(true);
+    toast.info("Detecting your location...");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setShowModal(false);
+        await applyLocation("Your location", latitude, longitude);
+        setLocationUpdating(false);
+      },
+      (geoError) => {
+        setLocationUpdating(false);
+        toast.error(geoError.message || "Could not detect your location");
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,8 +241,8 @@ const Header = ({ onSearch }: HeaderProps) => {
     if (onSearch) onSearch(value);
   };
 
-  const handleSignOut = () => {
-    contextSignOut();
+  const handleSignOut = async () => {
+    await contextSignOut();
     toast.success("Signed out successfully");
     navigate("/");
   };
@@ -193,6 +284,29 @@ const Header = ({ onSearch }: HeaderProps) => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await forgotPassword(identifier);
+      if (response.status !== 'success') {
+        toast.error(response.message || 'Could not send reset instructions');
+        return;
+      }
+
+      const resetOtp = response?.OTP ? String(response.OTP) : response?.otp ? String(response.otp) : null;
+      if (resetOtp) {
+        toast.success(`${response.message || 'OTP sent'} — OTP: ${resetOtp}`, { duration: 30000 });
+      } else {
+        toast.success(response.message || 'Reset instructions sent to your email');
+      }
+
+      clearError();
+      setSigninMode('login');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Could not send reset instructions');
+    }
+  };
+
   // ── OTP input helpers ─────────────────────────────────────────────────────
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) return;
@@ -221,10 +335,19 @@ const Header = ({ onSearch }: HeaderProps) => {
     }
   };
 
-  const handleCitySelect = (cityName: string) => {
-    setSelectedCity(cityName);
+  const handleCitySelect = async (cityName: string) => {
     setShowModal(false);
-    toast.success(`City selected: ${cityName}`);
+
+    const coords = getCityCoordinates(cityName);
+    if (!coords) {
+      saveCityName(cityName);
+      setSelectedCity(cityName);
+      toast.success(`City selected: ${cityName}`);
+      toast.info("Use a popular city or detect location for nearby events");
+      return;
+    }
+
+    await applyLocation(cityName, coords.latitude, coords.longitude);
   };
 
   const toggleShowAllCities = () => setShowAllCities((p) => !p);
@@ -255,7 +378,7 @@ const Header = ({ onSearch }: HeaderProps) => {
         </button>
 
         <button
-          onClick={() => { clearError(); setScreen('signin'); }}
+          onClick={() => { clearError(); setSigninMode('login'); setScreen('signin'); }}
           className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
           <User className="h-5 w-5 text-gray-600" />
@@ -361,7 +484,7 @@ const Header = ({ onSearch }: HeaderProps) => {
 
         <p className="text-center text-sm text-gray-500">
           Already have an account?{" "}
-          <button type="button" onClick={() => { clearError(); setScreen('signin'); }} className="text-[#8B5E3C] hover:underline font-medium">
+          <button type="button" onClick={() => { clearError(); setSigninMode('login'); setScreen('signin'); }} className="text-[#8B5E3C] hover:underline font-medium">
             Sign In
           </button>
         </p>
@@ -371,60 +494,127 @@ const Header = ({ onSearch }: HeaderProps) => {
 
   const renderSignin = () => (
     <div className="p-6">
-      <button onClick={() => { clearError(); setScreen('options'); }} className="mb-4 text-gray-600 hover:text-gray-900">
+      <button
+        onClick={() => {
+          clearError();
+          setSigninMode('login');
+          setScreen('options');
+        }}
+        className="mb-4 text-gray-600 hover:text-gray-900"
+      >
         <ArrowLeft className="h-5 w-5" />
       </button>
-      <h2 className="text-2xl font-semibold text-gray-900 mb-1">Sign In</h2>
-      <p className="text-sm text-gray-500 mb-6">Enter your email or mobile and password</p>
+      <h2 className="text-2xl font-semibold text-gray-900 mb-1">
+        {signinMode === 'forgot' ? 'Forgot Password' : 'Sign In'}
+      </h2>
+      <p className="text-sm text-gray-500 mb-6">
+        {signinMode === 'forgot'
+          ? 'Enter your registered email or mobile to receive a reset OTP.'
+          : 'Enter your email or mobile and password'}
+      </p>
 
-      <form onSubmit={handlePasswordSignIn} className="space-y-4">
-        <div className="space-y-1">
-          <Label htmlFor="signin-identifier" className="text-sm font-medium text-gray-700">
-            Email or Mobile
-          </Label>
-          <Input
-            id="signin-identifier"
-            type="text"
-            placeholder="name@example.com or 9876543210"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            autoFocus
-            required
-            className="h-12 border-gray-300 rounded-lg"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="signin-password" className="text-sm font-medium text-gray-700">
-            Password
-          </Label>
-          <Input
-            id="signin-password"
-            type="password"
-            placeholder="Enter your password"
-            value={signinPassword}
-            onChange={(e) => setSigninPassword(e.target.value)}
-            required
-            className="h-12 border-gray-300 rounded-lg"
-          />
-        </div>
+      {signinMode === 'forgot' ? (
+        <form onSubmit={handleForgotPassword} className="space-y-4">
+          <div className="space-y-1">
+            <Label htmlFor="signin-identifier" className="text-sm font-medium text-gray-700">
+              Email or Mobile
+            </Label>
+            <Input
+              id="signin-identifier"
+              type="text"
+              placeholder="name@example.com or 9876543210"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              autoFocus
+              required
+              className="h-12 border-gray-300 rounded-lg"
+            />
+          </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full h-12 bg-[#8B5E3C] hover:bg-[#5C4033] text-white font-medium rounded-lg"
-        >
-          {loading ? "Signing in..." : "Sign In"}
-        </Button>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 bg-[#8B5E3C] hover:bg-[#5C4033] text-white font-medium rounded-lg"
+          >
+            {loading ? 'Sending...' : 'Send reset OTP'}
+          </Button>
 
-        <p className="text-center text-sm text-gray-500">
-          New here?{" "}
-          <button type="button" onClick={() => { clearError(); setScreen('signup'); }} className="text-[#8B5E3C] hover:underline font-medium">
-            Create Account
-          </button>
-        </p>
-      </form>
+          <p className="text-center text-sm text-gray-500">
+            Remember your password?{' '}
+            <button
+              type="button"
+              onClick={() => { clearError(); setSigninMode('login'); }}
+              className="text-[#8B5E3C] hover:underline font-medium"
+            >
+              Sign In
+            </button>
+          </p>
+        </form>
+      ) : (
+        <form onSubmit={handlePasswordSignIn} className="space-y-4">
+          <div className="space-y-1">
+            <Label htmlFor="signin-identifier" className="text-sm font-medium text-gray-700">
+              Email or Mobile
+            </Label>
+            <Input
+              id="signin-identifier"
+              type="text"
+              placeholder="name@example.com or 9876543210"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              autoFocus
+              required
+              className="h-12 border-gray-300 rounded-lg"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="signin-password" className="text-sm font-medium text-gray-700">
+              Password
+            </Label>
+            <Input
+              id="signin-password"
+              type="password"
+              placeholder="Enter your password"
+              value={signinPassword}
+              onChange={(e) => setSigninPassword(e.target.value)}
+              required
+              className="h-12 border-gray-300 rounded-lg"
+            />
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => { clearError(); setSigninMode('forgot'); }}
+                className="text-sm text-[#8B5E3C] hover:underline font-medium"
+              >
+                Forgot password?
+              </button>
+            </div>
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 bg-[#8B5E3C] hover:bg-[#5C4033] text-white font-medium rounded-lg"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </Button>
+
+          <p className="text-center text-sm text-gray-500">
+            New here?{' '}
+            <button
+              type="button"
+              onClick={() => { clearError(); setSigninMode('login'); setScreen('signup'); }}
+              className="text-[#8B5E3C] hover:underline font-medium"
+            >
+              Create Account
+            </button>
+          </p>
+        </form>
+      )}
     </div>
   );
 
@@ -513,9 +703,9 @@ const Header = ({ onSearch }: HeaderProps) => {
       <div className="container flex h-14 sm:h-16 items-center justify-between px-2 sm:px-4 max-w-full">
         {/* Left Section */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-5 flex-1 min-w-0">
-          <Link to="/" className="flex items-center shrink-0">
+          <Link to="/" className="flex shrink-0 items-center md:hidden">
             <h1
-              className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif italic tracking-wide whitespace-nowrap"
+              className="whitespace-nowrap text-xl font-serif italic tracking-wide sm:text-2xl"
               style={{ color: "#C9B194" }}
             >
               book
@@ -584,16 +774,6 @@ const Header = ({ onSearch }: HeaderProps) => {
                   </span>
                 )}
               </Link>
-              <Link to={ROUTES.FAVORITE_EVENTS}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-[#8B5E3C] hover:text-[#5C4033] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
-                  aria-label="Liked events"
-                >
-                  <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
-              </Link>
             </>
           ) : (
             <>
@@ -611,20 +791,6 @@ const Header = ({ onSearch }: HeaderProps) => {
               >
                 <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  toast.info("Please sign in to view liked events.");
-                  setPostLoginPath(ROUTES.FAVORITE_EVENTS);
-                  setShow(true);
-                  setScreen("signin");
-                }}
-                className="text-[#8B5E3C] hover:text-[#5C4033] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
-                aria-label="Liked events"
-              >
-                <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
             </>
           )}
 
@@ -639,29 +805,24 @@ const Header = ({ onSearch }: HeaderProps) => {
             </span>
           </Button>
 
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 sm:h-9 lg:h-10 px-2 sm:px-3 lg:px-4 text-xs sm:text-sm">
-                  <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:mr-2" />
-                  <span className="hidden md:inline">Account</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={() => navigate(ROUTES.FAVORITE_EVENTS)}>
-                  Liked Events
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {authLoading ? null : user ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              className="flex items-center gap-1 sm:gap-2 h-8 sm:h-9 lg:h-10 px-2 sm:px-3 lg:px-4 text-xs sm:text-sm border-[#8B5E3C] text-[#8B5E3C] hover:bg-[#8B5E3C]/10 hover:text-[#5C4033]"
+            >
+              <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </Button>
           ) : (
             <>
               <Button
                 className="bg-[#8B5E3C] hover:bg-[#5C4033] flex items-center gap-1 sm:gap-2 h-8 sm:h-9 lg:h-10 px-2 sm:px-3 lg:px-4 text-xs sm:text-sm"
-                onClick={() => setShow(true)}
+                onClick={() => {
+                  setScreen("options");
+                  setShow(true);
+                }}
               >
                 <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Sign In</span>
@@ -737,9 +898,10 @@ const Header = ({ onSearch }: HeaderProps) => {
             <Button
               variant="ghost"
               onClick={detectLocation}
+              disabled={locationUpdating}
               className="text-[#8B5E3C] bg-[#F7F7F7] hover:text-[#C2A68C] mb-3 flex items-center gap-2 hover:bg-[#EFE9E3] h-10 sm:h-11 text-sm sm:text-base w-full"
             >
-              📍 Detect my location
+              📍 {locationUpdating ? "Updating location..." : "Detect my location"}
             </Button>
 
             {!showAllCities ? (

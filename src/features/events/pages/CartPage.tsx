@@ -1,15 +1,16 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
 import { Button } from "@/shared/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth/context/AuthContext";
 import { useCart, CART_QUERY_KEY } from "@/features/events/hooks/useCart";
 import { cartService } from "@/features/events/services/cartService";
 import CartDetailDialog from "@/features/events/components/CartDetailDialog";
 import EventTicketsPanel from "@/features/events/components/EventTicketsPanel";
+import OrderSummaryPanel from "@/features/events/components/OrderSummaryPanel";
 import { ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { toast } from "sonner";
@@ -46,12 +47,26 @@ const PageShell = ({ children }: { children: ReactNode }) => (
 const CartPage = () => {
   const { user, session, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
-  const { data, isLoading, error } = useCart(
+  const { data, isLoading, error, refetch, isFetching } = useCart(
     session?.access_token,
     !!user && !!session?.access_token && !authLoading,
   );
   const [isRemoving, setIsRemoving] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [ticketQuantities, setTicketQuantities] = useState<Record<number, number>>({});
+  const [activeTicketId, setActiveTicketId] = useState<number | null>(null);
+  const cartTickets = data?.fullDetail?.tickets ?? [];
+
+  useEffect(() => {
+    if (cartTickets.length === 0) {
+      setActiveTicketId(null);
+      return;
+    }
+
+    if (!activeTicketId || !cartTickets.some((ticket) => ticket.id === activeTicketId)) {
+      setActiveTicketId(cartTickets[0].id);
+    }
+  }, [cartTickets, activeTicketId]);
 
   const handleRemoveCart = async () => {
     setIsRemoving(true);
@@ -105,10 +120,11 @@ const CartPage = () => {
   const items = data?.items ?? [];
   const fullDetail = data?.fullDetail ?? { event: null, tickets: [] };
   const hasCart = items.length > 0 || Boolean(fullDetail.event);
-  const subtotal =
-    fullDetail.tickets.length > 0
-      ? fullDetail.tickets.reduce((sum, t) => sum + t.price, 0)
-      : items.reduce((sum, item) => sum + (item.sub_total ?? item.price ?? 0), 0);
+  const activeTicket =
+    fullDetail.tickets.find((ticket) => ticket.id === activeTicketId) ??
+    fullDetail.tickets[0] ??
+    null;
+  const activeQty = activeTicket ? ticketQuantities[activeTicket.id] ?? 1 : 1;
 
   return (
     <PageShell>
@@ -128,7 +144,21 @@ const CartPage = () => {
         </div>
       </section>
 
-      <div className="container py-8 md:py-12">
+      <div className="container py-8 md:py-12 space-y-6">
+        <div className="flex flex-col gap-3 rounded-xl border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            <strong className="text-foreground">Cart</strong> is for unpaid items.
+            After payment, your ticket appears in{" "}
+            <strong className="text-foreground">My Tickets</strong>.
+          </p>
+          <Link to={ROUTES.MY_TICKETS}>
+            <Button variant="outline" size="sm" className="shrink-0">
+              <Ticket className="mr-2 h-4 w-4" />
+              View my tickets
+            </Button>
+          </Link>
+        </div>
+
         {!hasCart ? (
           <div className="mx-auto max-w-lg rounded-2xl border border-dashed bg-muted/30 px-8 py-16 text-center">
             <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -197,7 +227,7 @@ const CartPage = () => {
                           <Ticket className="h-4 w-4 text-primary" />
                           {fullDetail.tickets.length > 0
                             ? `${fullDetail.tickets.length} ticket type(s)`
-                            : `₹${item.sub_total ?? item.price ?? 0}`}
+                            : `₹${item.sub_total ?? item.price ?? fullDetail.event?.price ?? 0}`}
                         </p>
                         <span className="text-xs font-medium text-primary">View details</span>
                       </div>
@@ -211,19 +241,40 @@ const CartPage = () => {
               {fullDetail.event && fullDetail.tickets.length > 0 && (
                 <EventTicketsPanel
                   eventId={fullDetail.event.id}
+                  eventName={fullDetail.event.name}
                   tickets={fullDetail.tickets}
                   userToken={session?.access_token}
                   title="Buy tickets"
                   className="rounded-2xl border bg-card p-4 shadow-sm"
+                  quantities={ticketQuantities}
+                  onQuantitiesChange={(ticketId, qty) =>
+                    setTicketQuantities((prev) => ({ ...prev, [ticketId]: qty }))
+                  }
+                  activeTicketId={activeTicketId}
+                  onActiveTicketChange={setActiveTicketId}
+                />
+              )}
+
+              {fullDetail.event && fullDetail.tickets.length === 0 && (
+                <div className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground shadow-sm space-y-3">
+                  <p>Ticket options did not load. Refresh to fetch full cart details from the server.</p>
+                  <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+                    {isFetching ? "Refreshing..." : "Refresh cart"}
+                  </Button>
+                </div>
+              )}
+
+              {fullDetail.event && activeTicket && (
+                <OrderSummaryPanel
+                  eventId={fullDetail.event.id}
+                  ticketId={activeTicket.id}
+                  qty={activeQty}
+                  userToken={session?.access_token}
+                  ticketLabel={activeTicket.type}
                 />
               )}
 
               <div className="rounded-2xl border bg-card p-6 h-fit space-y-4 shadow-sm">
-                <h3 className="font-semibold text-lg">Order summary</h3>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-semibold">₹{subtotal}</span>
-                </div>
                 <Button className="w-full" variant="outline" onClick={() => setDetailOpen(true)}>
                   View cart details
                 </Button>

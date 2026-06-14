@@ -6,6 +6,7 @@ import {
 
 const GARBA_PROXY_BASE = "/garba-auth";
 const CART_PENDING_KEY = "cart_pending_event";
+const CART_CACHE_KEY = "cart_detail_cache";
 
 const ADD_TO_CART_URL =
   import.meta.env.VITE_GARBATOWN_ADD_TO_CART_URL ??
@@ -13,8 +14,7 @@ const ADD_TO_CART_URL =
 const CART_DETAILS_URLS = [
   import.meta.env.VITE_GARBATOWN_CART_DETAILS_URL ??
     `${GARBA_PROXY_BASE}/api/v1/odoo/cart_details`,
-  `${GARBA_PROXY_BASE}/api/v1/odoo/cart_detail`,
-  `${GARBA_PROXY_BASE}/api/v1/user/cart_details`,
+  `${GARBA_PROXY_BASE}/api/v1/odoo/cart_details`,
 ];
 const REMOVE_CART_URL =
   import.meta.env.VITE_GARBATOWN_REMOVE_CART_URL ??
@@ -120,6 +120,33 @@ export interface OrderSummaryData {
   gst_amount: number;
   total_amount: number;
 }
+
+const normalizeOrderSummary = (raw: unknown): OrderSummaryData | undefined => {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+
+  const payload = raw as Record<string, unknown>;
+  const eventId = toNumber(payload.event_id, toNumber(payload.id, 0));
+  const ticketId = toNumber(payload.ticket_id, 0);
+
+  if (!eventId && !ticketId) return undefined;
+
+  return {
+    event_id: eventId,
+    event_name: toString(payload.event_name) || toString(payload.name) || "Event",
+    ticket_id: ticketId,
+    ticket_type: toString(payload.ticket_type) || toString(payload.type) || "Ticket",
+    qty: toNumber(payload.qty, 1) || 1,
+    price: toNumber(payload.price, 0),
+    subtotal: toNumber(payload.subtotal, toNumber(payload.sub_total, 0)),
+    platform_fee: toNumber(payload.platform_fee, toNumber(payload.platform_charges, 0)),
+    gst: toNumber(payload.gst, toNumber(payload.gst_percent, 0)),
+    gst_amount: toNumber(payload.gst_amount, toNumber(payload.gst_value, 0)),
+    total_amount: toNumber(
+      payload.total_amount,
+      toNumber(payload.total, toNumber(payload.grand_total, 0)),
+    ),
+  };
+};
 
 export interface OrderSummaryResponse {
   status: string;
@@ -253,6 +280,91 @@ export const clearPendingCartItem = () => {
   sessionStorage.removeItem(CART_PENDING_KEY);
 };
 
+type CartDetailResult = {
+  items: CartItem[];
+  fullDetail: FullCartDetail;
+  raw: CartDetailResponse;
+};
+
+const cacheCartDetail = (result: CartDetailResult) => {
+  try {
+    sessionStorage.setItem(CART_CACHE_KEY, JSON.stringify(result));
+  } catch {
+    // ignore quota errors
+  }
+};
+
+const readCachedCartDetail = (): CartDetailResult | null => {
+  try {
+    const raw = sessionStorage.getItem(CART_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CartDetailResult;
+    if (parsed?.fullDetail?.event || (parsed?.items?.length ?? 0) > 0) {
+      return parsed;
+    }
+  } catch {
+    // ignore invalid cache
+  }
+  return null;
+};
+
+const clearCartDetailCache = () => {
+  sessionStorage.removeItem(CART_CACHE_KEY);
+};
+
+const buildCartDetailResult = (raw: CartDetailResponse): CartDetailResult | null => {
+  if (raw.status !== "success") return null;
+
+  const fullDetail = parseFullCartDetail(raw);
+  const hasCartContent = Boolean(fullDetail.event || fullDetail.tickets.length > 0);
+  if (!hasCartContent) return null;
+
+  const items = fullDetail.event
+    ? [normalizeCartItem({ ...fullDetail.event, event_id: fullDetail.event.id })]
+    : extractCartItems(raw.data ?? raw);
+
+  return { items, fullDetail, raw };
+};
+
+const hydrateCartFromApi = async (
+  userToken?: string | null,
+): Promise<CartDetailResult | null> => {
+  const headerVariants = prioritizeHeaders(
+    buildGarbaAuthHeaderVariants(userToken),
+    resolvedCartHeader,
+  );
+  if (headerVariants.length === 0) return null;
+
+  const uniqueUrls = [...new Set(CART_DETAILS_URLS)];
+
+  for (const url of uniqueUrls) {
+    for (const headers of headerVariants) {
+      try {
+        const response = await axios.get<CartDetailResponse>(url, {
+          headers,
+          timeout: 15000,
+          validateStatus: () => true,
+        });
+
+        if (response.status !== 200 || !isCartDetailPayload(response.data)) {
+          continue;
+        }
+
+        const result = buildCartDetailResult(response.data);
+        if (!result) continue;
+
+        resolvedCartDetailsUrl = url;
+        resolvedCartHeader = headers;
+        return result;
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  return null;
+};
+
 const requestWithHeaders = async <T>(
   userToken: string | null | undefined,
   requestFn: (headers: Record<string, string>) => Promise<T>,
@@ -343,36 +455,35 @@ const isCartDetailPayload = (payload: unknown): payload is CartDetailResponse =>
 
 const fetchCartDetailFromApi = async (
   headers: Record<string, string>,
-): Promise<{ items: CartItem[]; fullDetail: FullCartDetail; raw: CartDetailResponse }> => {
-  const fallbackUrls =
-    resolvedCartDetailsUrl
-      ? [resolvedCartDetailsUrl, ...CART_DETAILS_URLS.filter((u) => u !== resolvedCartDetailsUrl)]
-      : CART_DETAILS_URLS;
+): Promise<CartDetailResult> => {
+  const fallbackUrls = [
+    ...(resolvedCartDetailsUrl ? [resolvedCartDetailsUrl] : []),
+    ...CART_DETAILS_URLS.filter((url) => url !== resolvedCartDetailsUrl),
+  ];
+  const uniqueUrls = [...new Set(fallbackUrls)];
 
-  let lastError: unknown = null;
-
-  for (const url of fallbackUrls) {
+  for (const url of uniqueUrls) {
     try {
-      const getResponse = await axios.get<CartDetailResponse>(url, { headers, timeout: 15000 });
-      if (!isCartDetailPayload(getResponse.data)) {
+      const getResponse = await axios.get<CartDetailResponse>(url, {
+        headers,
+        timeout: 15000,
+        validateStatus: () => true,
+      });
+
+      if (getResponse.status !== 200 || !isCartDetailPayload(getResponse.data)) {
         continue;
       }
 
-      const fullDetail = parseFullCartDetail(getResponse.data);
-      const hasCartContent = Boolean(fullDetail.event || fullDetail.tickets.length > 0);
-      if (hasCartContent || getResponse.data.status === "success") {
-        resolvedCartDetailsUrl = url;
-        const items = fullDetail.event
-          ? [normalizeCartItem({ ...fullDetail.event, event_id: fullDetail.event.id })]
-          : extractCartItems(getResponse.data.data ?? getResponse.data);
-        return { items, fullDetail, raw: getResponse.data };
-      }
-    } catch (error: unknown) {
-      lastError = error;
+      const result = buildCartDetailResult(getResponse.data);
+      if (!result) continue;
+
+      resolvedCartDetailsUrl = url;
+      return result;
+    } catch {
+      continue;
     }
   }
 
-  if (lastError) throw lastError;
   return { items: [], fullDetail: { event: null, tickets: [] }, raw: { status: "error" } };
 };
 
@@ -410,29 +521,47 @@ export const cartService = {
         });
       }
 
+      const hydrated = await hydrateCartFromApi(userToken);
+      if (hydrated) {
+        cacheCartDetail(hydrated);
+        clearPendingCartItem();
+      }
+
       return { ...body, popup };
     });
   },
 
-  async getCartDetail(userToken?: string | null): Promise<{
-    items: CartItem[];
-    fullDetail: FullCartDetail;
-    raw: CartDetailResponse;
-  }> {
+  async getCartDetail(userToken?: string | null): Promise<CartDetailResult> {
     let items: CartItem[] = [];
     let fullDetail: FullCartDetail = { event: null, tickets: [] };
     let raw: CartDetailResponse = { status: "success" };
 
+    const hydrated = await hydrateCartFromApi(userToken);
+    if (hydrated) {
+      cacheCartDetail(hydrated);
+      clearPendingCartItem();
+      return hydrated;
+    }
+
     try {
-      const result = await requestWithHeaders(userToken, async (headers) => fetchCartDetailFromApi(headers));
+      const result = await requestWithHeaders(userToken, async (headers) =>
+        fetchCartDetailFromApi(headers),
+      );
       items = result.items;
       fullDetail = result.fullDetail;
       raw = result.raw;
       if (items.length > 0 || fullDetail.event) {
+        cacheCartDetail({ items, fullDetail, raw });
         clearPendingCartItem();
+        return { items, fullDetail, raw };
       }
     } catch {
-      // Fall through to pending cart item
+      // Fall through to cache / pending cart item
+    }
+
+    const cached = readCachedCartDetail();
+    if (cached) {
+      return cached;
     }
 
     if (items.length === 0) {
@@ -468,6 +597,7 @@ export const cartService = {
       return res.data;
     });
     clearPendingCartItem();
+    clearCartDetailCache();
     return response;
   },
 
@@ -479,18 +609,46 @@ export const cartService = {
   ): Promise<OrderSummaryResponse> {
     const normalizedQty = Math.max(1, Math.round(qty));
 
-    return requestWithHeaders(userToken, async (headers) => {
-      const response = await axios.post<OrderSummaryResponse>(
-        ORDER_SUMMARY_URL,
-        {
-          id: Number(eventId),
-          ticket_id: Number(ticketId),
-          qty: normalizedQty,
-        },
-        { headers, timeout: 15000 },
-      );
-      return response.data;
-    });
+    try {
+      const response = await requestWithHeaders(userToken, async (headers) => {
+        const res = await axios.post(
+          ORDER_SUMMARY_URL,
+          {
+            id: String(eventId),
+            ticket_id: String(ticketId),
+            qty: String(normalizedQty),
+          },
+          { headers, timeout: 15000, validateStatus: () => true },
+        );
+        return res;
+      });
+
+      const body = response.data as OrderSummaryResponse | Record<string, unknown>;
+      const status = toString((body as OrderSummaryResponse).status, "error");
+      const message = (body as OrderSummaryResponse).message;
+      const normalized = normalizeOrderSummary((body as OrderSummaryResponse).data ?? body);
+
+      if (status !== "success" || !normalized) {
+        return {
+          status: "error",
+          message:
+            message ||
+            extractGarbaApiMessage({ response: { data: body, status: response.status } }) ||
+            "Could not fetch order summary",
+        };
+      }
+
+      return {
+        status: "success",
+        message,
+        data: normalized,
+      };
+    } catch (error: unknown) {
+      return {
+        status: "error",
+        message: extractGarbaApiMessage(error) || "Could not fetch order summary",
+      };
+    }
   },
 
   async buyTicket(

@@ -9,8 +9,9 @@ import { BrowserRouter } from 'react-router-dom';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { Toaster } from '@/shared/components/ui/toaster';
 import { Toaster as Sonner } from '@/shared/components/ui/sonner';
-import { AuthProvider } from '@/contexts/AuthContext';
-import AuthDataSync from '@/components/AuthDataSync';
+import { AuthProvider } from '@/features/auth/context/AuthContext';
+import AuthDataSync from '@/features/auth/components/AuthDataSync';
+import AuthModalOpener from '@/features/auth/components/AuthModalOpener';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -37,6 +38,7 @@ export const Providers = ({ children }: ProvidersProps) => {
                 >
                     <AuthProvider>
                         <AuthDataSync />
+                        <AuthModalOpener />
                         {children}
                         <Toaster />
                         <Sonner />

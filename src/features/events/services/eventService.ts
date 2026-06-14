@@ -1,5 +1,7 @@
 import axios from "axios";
 import type { EventsMeta } from "@/shared/types/api";
+import { extractGarbaApiMessage } from "@/lib/garba/apiAuth";
+import { ensureBrowseUserToken } from "@/lib/garba/browseToken";
 
 const GARBA_PROXY_BASE = "/garba-auth";
 
@@ -152,14 +154,15 @@ const prioritizeUrls = (urls: string[], preferred: string | null) => {
 };
 
 const fetchPopularEvents = async (userToken?: string | null): Promise<PopularEventsResponse> => {
+  const resolvedToken = await ensureBrowseUserToken(userToken);
+  if (!resolvedToken) {
+    throw new Error("Sign in to view events.");
+  }
+
   const headerVariants = prioritizeHeaders(
-    buildPopularEventsHeaderVariants(userToken),
+    buildPopularEventsHeaderVariants(resolvedToken),
     resolvedPopularHeader,
   );
-
-  if (headerVariants.length === 0) {
-    throw new Error("User token is required for popular events API");
-  }
 
   let lastError: unknown = null;
   const candidateUrls = prioritizeUrls(POPULAR_EVENTS_URLS, resolvedPopularEventsUrl);
@@ -339,13 +342,15 @@ const fetchEventDetails = async (
   id: number | string,
   userToken?: string | null,
 ): Promise<PopularEvent | undefined> => {
+  const resolvedToken = await ensureBrowseUserToken(userToken);
+  if (!resolvedToken) {
+    throw new Error("Sign in to view event details.");
+  }
+
   const headerVariants = prioritizeHeaders(
-    buildPopularEventsHeaderVariants(userToken),
+    buildPopularEventsHeaderVariants(resolvedToken),
     resolvedEventDetailsHeader ?? resolvedPopularHeader,
   );
-  if (headerVariants.length === 0) {
-    throw new Error("User token is required for event details API");
-  }
 
   const eventId = Number(id);
   let lastError: unknown = null;
@@ -521,9 +526,28 @@ export const eventService = {
   ): Promise<PopularEvent | undefined> {
     try {
       return await fetchEventDetails(id, userToken);
-    } catch {
-      const list = await fetchPopularEvents(userToken);
-      return list.data.find((event) => event.id === Number(id));
+    } catch (error: unknown) {
+      const message =
+        extractGarbaApiMessage(error) ??
+        (error as Error)?.message ??
+        "Could not load event details";
+      const isAuthError = /unauthorized|invalid token|token is required|session expired/i.test(
+        message,
+      );
+
+      if (isAuthError) {
+        throw new Error(message);
+      }
+
+      try {
+        const list = await fetchPopularEvents(userToken);
+        const fallback = list.data.find((event) => event.id === Number(id));
+        if (fallback) return fallback;
+      } catch {
+        // Ignore fallback lookup errors and surface the original failure.
+      }
+
+      throw error instanceof Error ? error : new Error(message);
     }
   },
 

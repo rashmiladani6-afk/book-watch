@@ -35,7 +35,7 @@ export const useAddToCart = (
       }
 
       setReplaceEventId(null);
-      await queryClient.refetchQueries({ queryKey: CART_QUERY_KEY });
+      await queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
       options?.onAdded?.();
     },
     onError: (error: unknown) => {

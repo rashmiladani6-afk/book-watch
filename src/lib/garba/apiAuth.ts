@@ -18,6 +18,7 @@ export const buildGarbaAuthHeaderVariants = (userToken?: string | null): Record<
 
   return [
     { ...baseHeaders, AuthorizationUserToken: normalizedToken },
+    { ...baseHeaders, AuthorizationuserToken: normalizedToken },
     { ...baseHeaders, AuthorizationUserToken: `Bearer ${normalizedToken}` },
     { ...baseHeaders, Authorizationtoken: normalizedToken },
     { ...baseHeaders, "Authorization-Token": normalizedToken },
@@ -43,6 +44,13 @@ export const extractGarbaApiMessage = (error: unknown): string | null => {
 
   if (response?.status === 404) {
     return "Buy ticket API is not available on the Garba Town server (404).";
+  }
+
+  if (response?.status === 409) {
+    return (
+      (data as { message?: string } | undefined)?.message ||
+      "This mobile number is already used by another account."
+    );
   }
 
   return null;

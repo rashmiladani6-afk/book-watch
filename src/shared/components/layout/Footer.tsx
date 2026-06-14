@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { ROUTES } from "@/shared/constants/routes";
 import { Facebook, Twitter, Instagram, Youtube, Mail, Phone, Clock } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
 
@@ -56,7 +57,7 @@ const Footer = () => {
           <div>
             <h4 className="text-white font-semibold mb-3 text-sm">ENTERTAINMENT</h4>
             <ul className="space-y-2">
-              <li><Link to="/events/list" className="text-gray-300 hover:text-white transition-colors">Live Events</Link></li>
+              <li><Link to={ROUTES.EVENTS_LIST} className="text-gray-300 hover:text-white transition-colors">Live Events</Link></li>
               <li><Link to="/" className="text-gray-300 hover:text-white transition-colors">Plays & Theatre</Link></li>
               <li><Link to="/" className="text-gray-300 hover:text-white transition-colors">Sports Events</Link></li>
               <li><Link to="/" className="text-gray-300 hover:text-white transition-colors">Activities</Link></li>
@@ -69,7 +70,7 @@ const Footer = () => {
             <h4 className="text-white font-semibold mb-3 text-sm">QUICK LINKS</h4>
             <ul className="space-y-2">
               <li><Link to="/about" className="text-gray-300 hover:text-white transition-colors">About Us</Link></li>
-              <li><Link to="/contact" className="text-gray-300 hover:text-white transition-colors">Contact Us</Link></li>
+              <li><Link to={ROUTES.CONTACT} className="text-gray-300 hover:text-white transition-colors">Contact Us</Link></li>
               <li><Link to="/faqs" className="text-gray-300 hover:text-white transition-colors">FAQs</Link></li>
               <li><Link to="/careers" className="text-gray-300 hover:text-white transition-colors">Careers</Link></li>
               <li><Link to="/gift-cards" className="text-gray-300 hover:text-white transition-colors">Gift Cards</Link></li>

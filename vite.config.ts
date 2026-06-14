@@ -57,6 +57,12 @@ export default defineConfig({
           });
         },
       },
+      '/garba_auth': {
+        target: 'https://www.garbatown.com',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/garba_auth/, ''),
+      },
     },
   },
 });

@@ -4,7 +4,7 @@
 
 import { useEffect } from 'react';
 
-import { useFcmToken } from '@/hooks/useFcmToken';
+import { useFcmToken } from '@/shared/hooks/useFcmToken';
 import VerticalSidebar from '@/shared/components/layout/VerticalSidebar';
 
 import { Providers } from './providers';
@@ -34,7 +34,7 @@ const App = () => {
   return (
     <Providers>
       <VerticalSidebar />
-      <div className="md:ml-[72px]">
+      <div className="min-h-screen md:pl-[108px]">
         <AppRoutes />
       </div>
     </Providers>

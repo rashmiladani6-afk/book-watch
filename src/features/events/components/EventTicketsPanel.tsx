@@ -1,11 +1,18 @@
 import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import type { CartTicketDetail } from "@/features/events/services/cartService";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Minus, Plus, Ticket } from "lucide-react";
-import { useBuyTicket } from "@/features/events/hooks/useBuyTicket";
 import { useOrderSummary } from "@/features/events/hooks/useOrderSummary";
+import OrderSummaryPanel from "@/features/events/components/OrderSummaryPanel";
+import { useCreateOrder } from "@/features/payment/hooks/useCheckout";
+import { paymentService } from "@/features/payment/services/paymentService";
+import { ROUTES } from "@/shared/constants/routes";
+import { getAuthUrl } from "@/lib/auth/authRedirect";
+import type { EventPaymentState } from "@/features/payment/types/payment";
+import { savePendingEventPayment } from "@/features/payment/utils/paymentStorage";
 
 const formatEventDate = (dateStr: string) => {
   if (!dateStr) return "—";
@@ -22,13 +29,16 @@ const formatEventDate = (dateStr: string) => {
 
 interface TicketPurchaseRowProps {
   eventId: number;
+  eventName?: string;
   ticket: CartTicketDetail;
   userToken?: string | null;
   qty: number;
   maxQty: number;
+  isActive: boolean;
   isCurrentBuying: boolean;
   onQtyChange: (nextQty: number) => void;
-  onBuy: () => void;
+  onSelect: () => void;
+  onCheckout: (summary: ReturnType<typeof useOrderSummary>["data"]) => void;
 }
 
 const TicketPurchaseRow = ({
@@ -37,9 +47,11 @@ const TicketPurchaseRow = ({
   userToken,
   qty,
   maxQty,
+  isActive,
   isCurrentBuying,
   onQtyChange,
-  onBuy,
+  onSelect,
+  onCheckout,
 }: TicketPurchaseRowProps) => {
   const { data: summaryResult } = useOrderSummary(
     eventId,
@@ -48,10 +60,22 @@ const TicketPurchaseRow = ({
     userToken,
     !!userToken,
   );
-  const summary = summaryResult?.status === "success" ? summaryResult.data : null;
 
   return (
-    <div className="rounded-lg border bg-background p-3 text-sm">
+    <div
+      className={`rounded-lg border bg-background p-3 text-sm transition-colors ${
+        isActive ? "border-primary ring-1 ring-primary/30" : ""
+      }`}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="font-semibold capitalize">{ticket.type}</p>
@@ -59,7 +83,10 @@ const TicketPurchaseRow = ({
           <p className="mt-1 text-muted-foreground">{formatEventDate(ticket.date)}</p>
         </div>
 
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+        <div
+          className="flex flex-col items-stretch gap-2 sm:items-end"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -96,9 +123,9 @@ const TicketPurchaseRow = ({
             size="sm"
             className="shrink-0"
             disabled={isCurrentBuying}
-            onClick={onBuy}
+            onClick={() => onCheckout(summaryResult)}
           >
-            {isCurrentBuying ? "Buying..." : "Buy ticket"}
+            {isCurrentBuying ? "Processing..." : "Proceed to pay"}
           </Button>
         </div>
       </div>
@@ -110,24 +137,17 @@ const TicketPurchaseRow = ({
         {ticket.max_seats !== undefined && <span>Max seats: {ticket.max_seats}</span>}
       </div>
 
-      {summary && (
-        <div className="mt-3 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
-          <div className="flex justify-between">
-            <span>Subtotal</span>
-            <span>₹{summary.subtotal}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Platform fee</span>
-            <span>₹{summary.platform_fee}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>GST ({summary.gst}%)</span>
-            <span>₹{summary.gst_amount}</span>
-          </div>
-          <div className="mt-1 flex justify-between font-semibold text-foreground">
-            <span>Total payable</span>
-            <span>₹{summary.total_amount}</span>
-          </div>
+      {isActive && (
+        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+          <OrderSummaryPanel
+            eventId={eventId}
+            ticketId={ticket.id}
+            qty={qty}
+            userToken={userToken}
+            title="Price breakdown"
+            compact
+            className="rounded-md border-0 bg-muted/40 p-2 shadow-none"
+          />
         </div>
       )}
     </div>
@@ -136,28 +156,40 @@ const TicketPurchaseRow = ({
 
 interface EventTicketsPanelProps {
   eventId: number;
+  eventName?: string;
   tickets: CartTicketDetail[];
   userToken?: string | null;
   title?: string;
   className?: string;
+  quantities?: Record<number, number>;
+  onQuantitiesChange?: (ticketId: number, qty: number) => void;
+  activeTicketId?: number | null;
+  onActiveTicketChange?: (ticketId: number) => void;
 }
 
 const EventTicketsPanel = ({
   eventId,
+  eventName,
   tickets,
   userToken,
   title = "Available tickets",
   className,
+  quantities: externalQuantities,
+  onQuantitiesChange,
+  activeTicketId: externalActiveTicketId,
+  onActiveTicketChange,
 }: EventTicketsPanelProps) => {
-  const [quantities, setQuantities] = useState<Record<number, number>>({});
-  const { buyTicket, isBuying, buyingTicketId } = useBuyTicket(userToken, {
-    onSuccess: (message) => {
-      toast.success(message || "Ticket purchased successfully");
-    },
-    onError: (message) => {
-      toast.error(message);
-    },
-  });
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [internalQuantities, setInternalQuantities] = useState<Record<number, number>>({});
+  const [internalActiveTicketId, setInternalActiveTicketId] = useState<number | null>(
+    tickets[0]?.id ?? null,
+  );
+  const [checkingOutTicketId, setCheckingOutTicketId] = useState<number | null>(null);
+  const createOrder = useCreateOrder(userToken);
+
+  const quantities = externalQuantities ?? internalQuantities;
+  const activeTicketId = externalActiveTicketId ?? internalActiveTicketId;
 
   if (tickets.length === 0) {
     return null;
@@ -168,7 +200,80 @@ const EventTicketsPanel = ({
   const setQty = (ticketId: number, nextQty: number, maxQty?: number) => {
     const max = maxQty && maxQty > 0 ? maxQty : 10;
     const clamped = Math.min(max, Math.max(1, nextQty));
-    setQuantities((prev) => ({ ...prev, [ticketId]: clamped }));
+    if (onQuantitiesChange) {
+      onQuantitiesChange(ticketId, clamped);
+      return;
+    }
+    setInternalQuantities((prev) => ({ ...prev, [ticketId]: clamped }));
+  };
+
+  const setActiveTicket = (ticketId: number) => {
+    if (onActiveTicketChange) {
+      onActiveTicketChange(ticketId);
+      return;
+    }
+    setInternalActiveTicketId(ticketId);
+  };
+
+  const handleCheckout = async (
+    ticket: CartTicketDetail,
+    qty: number,
+    summaryResult: ReturnType<typeof useOrderSummary>["data"],
+  ) => {
+    if (!userToken) {
+      toast.error("Sign in to continue to payment");
+      navigate(getAuthUrl(`${location.pathname}${location.search}`));
+      return;
+    }
+
+    setCheckingOutTicketId(ticket.id);
+    try {
+      const gatewayResult = await paymentService.getPaymentGateway(userToken);
+      const gateway = gatewayResult.status === "success" ? gatewayResult.data : null;
+      if (!gateway?.id) {
+        toast.error(gatewayResult.message || "Payment gateway is unavailable");
+        return;
+      }
+
+      const orderResult = await createOrder.mutateAsync({
+        eventId,
+        ticketId: ticket.id,
+        qty,
+        paymentProviderId: gateway.id,
+      });
+
+      if (orderResult.status !== "success" || !orderResult.data?.order_id) {
+        toast.error(orderResult.message || "Could not create order");
+        return;
+      }
+
+      const summary =
+        summaryResult?.status === "success" ? summaryResult.data ?? null : null;
+
+      const paymentState: EventPaymentState = {
+        type: "event",
+        eventId,
+        eventName: eventName ?? summary?.event_name ?? "Event",
+        ticketId: ticket.id,
+        ticketType: ticket.type,
+        qty,
+        orderId: orderResult.data.order_id,
+        paymentProviderId: gateway.id,
+        paymentProviderName: gateway.name,
+        paymentSessionId: orderResult.data.payment_session_id,
+        gatewayState: gateway.state,
+        summary,
+      };
+
+      savePendingEventPayment(paymentState);
+      navigate(ROUTES.PAYMENT, { state: paymentState });
+    } catch (err: unknown) {
+      const message =
+        (err as { message?: string })?.message || "Checkout failed. Please try again.";
+      toast.error(message);
+    } finally {
+      setCheckingOutTicketId(null);
+    }
   };
 
   return (
@@ -184,7 +289,7 @@ const EventTicketsPanel = ({
             ticket.available_tickets && ticket.available_tickets > 0
               ? ticket.available_tickets
               : 10;
-          const isCurrentBuying = isBuying && Number(buyingTicketId) === ticket.id;
+          const isCurrentBuying = checkingOutTicketId === ticket.id;
 
           return (
             <TicketPurchaseRow
@@ -194,9 +299,11 @@ const EventTicketsPanel = ({
               userToken={userToken}
               qty={qty}
               maxQty={maxQty}
+              isActive={activeTicketId === ticket.id}
               isCurrentBuying={isCurrentBuying}
               onQtyChange={(nextQty) => setQty(ticket.id, nextQty, maxQty)}
-              onBuy={() => buyTicket(eventId, ticket.id, qty)}
+              onSelect={() => setActiveTicket(ticket.id)}
+              onCheckout={(summaryResult) => handleCheckout(ticket, qty, summaryResult)}
             />
           );
         })}

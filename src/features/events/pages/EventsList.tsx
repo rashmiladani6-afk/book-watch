@@ -1,5 +1,5 @@
 import { usePopularEvents } from "@/features/events/hooks/usePopularEvents";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth/context/AuthContext";
 import { Card } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -26,31 +26,14 @@ const formatEventDate = (dateStr: string) => {
 
 const EventsList = () => {
   const { user, session, loading: authLoading } = useAuth();
-  const { data, isLoading, error } = usePopularEvents(
-    session?.access_token,
-    !!user && !!session?.access_token && !authLoading,
-  );
+  const { data, isLoading, error } = usePopularEvents(session?.access_token, !authLoading);
 
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <div className="container py-10">
-          <p className="text-center text-muted-foreground">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container py-20 text-center">
-          <p className="text-lg mb-4">Please sign in to view events.</p>
-          <Link to={getAuthUrl(ROUTES.EVENTS)}>
-            <Button>Sign in</Button>
-          </Link>
+          <p className="text-center text-muted-foreground">Loading events...</p>
         </div>
       </div>
     );
@@ -71,10 +54,15 @@ const EventsList = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="container py-10">
-          <p className="text-center text-destructive">
+        <div className="container py-10 text-center space-y-4">
+          <p className="text-destructive">
             Unable to load events. Please try again later.
           </p>
+          {!user && (
+            <Link to={getAuthUrl(ROUTES.EVENTS)}>
+              <Button variant="outline">Sign in</Button>
+            </Link>
+          )}
         </div>
       </div>
     );

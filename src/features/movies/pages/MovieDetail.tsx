@@ -13,7 +13,7 @@ const MovieDetail = () => {
         <p className="text-muted-foreground mb-6">
           This app currently shows live Garba Town events only. Movie listings are not connected yet.
         </p>
-        <Link to="/events/list">
+        <Link to={ROUTES.EVENTS_LIST}>
           <Button>Browse events</Button>
         </Link>
         <div className="mt-4">

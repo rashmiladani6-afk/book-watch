@@ -199,7 +199,7 @@ const TimerCarousel = ({
                   alt={eventSlides[0].title}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-white/40 to-white/40" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#F8F1E8]/92 via-[#F8F1E8]/45 to-transparent" />
                 <div className="absolute inset-0 h-full flex items-center p-4 sm:p-5 lg:p-6 text-[#2D2A26]">
                   <div className="min-w-0">
                     <p className="text-xs sm:text-lg uppercase tracking-wide text-[#000] mb-2">Top Rated Event</p>

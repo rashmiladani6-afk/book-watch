@@ -2,6 +2,7 @@
 import axios from 'axios';
 
 import { ensureFcmToken } from '@/lib/firebase/messaging';
+import { buildGarbaAuthHeaderVariants } from '@/lib/garba/apiAuth';
 
 // Dedicated Garba Town auth proxy path.
 // In dev: Vite proxies /garba-auth/* → https://www.garbatown.com/*
@@ -76,6 +77,22 @@ export interface VerifyOTPResponse {
   status: string;
   message: string;
   data?: AuthUser;
+}
+
+export interface LogoutResponse {
+  status: string;
+  message?: string;
+}
+
+export interface ForgotPasswordRequest {
+  login: string;
+}
+
+export interface ForgotPasswordResponse {
+  status: string;
+  message?: string;
+  otp?: string;
+  OTP?: string;
 }
 
 const withFcmToken = async (fcmToken?: string | null) => {
@@ -164,6 +181,56 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       console.error('Verify OTP Error:', error.response?.data || error);
+      throw error;
+    }
+  },
+
+  logout: async (
+    userToken?: string | null,
+    userId?: string | number | null,
+  ): Promise<LogoutResponse> => {
+    const headerVariants = buildGarbaAuthHeaderVariants(userToken);
+    if (headerVariants.length === 0) {
+      throw new Error('User token is required for logout');
+    }
+
+    const payload =
+      userId != null && String(userId).trim() !== ''
+        ? { id: Number(userId) }
+        : {};
+
+    let lastError: unknown = null;
+    for (const headers of headerVariants) {
+      try {
+        const response = await axios.post<LogoutResponse>(
+          `${AUTH_BASE_URL}/logout`,
+          payload,
+          { headers, timeout: 15000 },
+        );
+        return response.data;
+      } catch (error: unknown) {
+        lastError = error;
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 401 || status === 403) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw lastError;
+  },
+
+  forgotPassword: async (data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> => {
+    try {
+      const response = await axios.post<ForgotPasswordResponse>(
+        `${AUTH_BASE_URL}/forgot_password`,
+        { login: data.login.trim() },
+        { headers: authHeaders, timeout: 15000 },
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Forgot Password API Error:', error.response?.data || error);
       throw error;
     }
   },

@@ -30,6 +30,7 @@ export interface EventsMeta {
     offset: number;
     total: number;
     has_more: boolean;
+    count?: number;
 }
 
 export interface ApiRequestConfig {

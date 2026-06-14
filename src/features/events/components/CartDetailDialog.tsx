@@ -127,6 +127,7 @@ const CartDetailDialog = ({
 
         <EventTicketsPanel
           eventId={event.id}
+          eventName={event.name}
           tickets={tickets}
           userToken={userToken}
         />

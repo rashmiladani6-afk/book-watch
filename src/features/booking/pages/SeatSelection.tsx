@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import Header from "@/shared/components/layout/Header";
 import { Button } from "@/shared/components/ui/button";
+import { ROUTES } from "@/shared/constants/routes";
 
 const SeatSelection = () => {
   const navigate = useNavigate();
@@ -13,7 +14,7 @@ const SeatSelection = () => {
         <p className="text-muted-foreground mb-6">
           Seat selection is not connected to a live movies API yet. Browse Garba Town events instead.
         </p>
-        <Button onClick={() => navigate("/events/list")}>Browse events</Button>
+        <Button onClick={() => navigate(ROUTES.EVENTS_LIST)}>Browse events</Button>
       </div>
     </div>
   );

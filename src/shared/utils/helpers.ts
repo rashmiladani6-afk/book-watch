@@ -34,7 +34,7 @@ export const calculateBookingTotal = (seats: Seat[]): number => {
  * Check if seat is premium based on row
  */
 export const isPremiumSeat = (row: string): boolean => {
-    return SEAT_CONFIG.PREMIUM_ROWS.includes(row);
+    return (SEAT_CONFIG.PREMIUM_ROWS as readonly string[]).includes(row);
 };
 
 /**

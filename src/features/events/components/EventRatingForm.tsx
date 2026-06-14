@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/shared/components/ui/button";
 import { useAddRating } from "@/features/events/hooks/useAddRating";
+import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { cn } from "@/lib/utils";
 
 interface EventRatingFormProps {
@@ -15,12 +18,33 @@ const EventRatingForm = ({
   currentRating,
   userToken,
 }: EventRatingFormProps) => {
+  const navigate = useNavigate();
   const [hoveredRating, setHoveredRating] = useState(0);
   const [selectedRating, setSelectedRating] = useState(0);
   const { submitRating, isSubmitting } = useAddRating(eventId, userToken);
 
   const displayRating = Number.isFinite(currentRating) ? currentRating.toFixed(1) : "0.0";
   const activeValue = hoveredRating || selectedRating;
+
+  if (!userToken) {
+    return (
+      <div className="rounded-xl border bg-white p-4 sm:p-6">
+        <h3 className="text-lg font-semibold text-gray-900">Rate this event</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Current average: <span className="font-semibold text-gray-900">{displayRating}/5</span>
+        </p>
+        <p className="mt-3 text-sm text-muted-foreground">Sign in to leave a rating.</p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-3"
+          onClick={() => navigate(getAuthUrl())}
+        >
+          Sign in
+        </Button>
+      </div>
+    );
+  }
 
   const handleRate = async (rating: number) => {
     setSelectedRating(rating);

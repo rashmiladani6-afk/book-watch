@@ -5,6 +5,10 @@
       "destination": "https://www.garbatown.com/:path*"
     },
     {
+      "source": "/garba_auth/:path*",
+      "destination": "https://www.garbatown.com/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://dwaaro.axenorsuite.com/api/:path*"
     },

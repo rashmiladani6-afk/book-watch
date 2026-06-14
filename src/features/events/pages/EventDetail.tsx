@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
@@ -13,14 +13,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/shared/components/ui/alert-dialog";
-import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Play, Share2, ShoppingCart, Star, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Share2, ShoppingCart, Star, X } from "lucide-react";
 import { useEvent } from "@/features/events/hooks/useEvent";
 import { useAddToCart } from "@/features/events/hooks/useAddToCart";
 import EventLikeButton from "@/features/events/components/EventLikeButton";
 import EventRatingForm from "@/features/events/components/EventRatingForm";
 import EventTicketsPanel from "@/features/events/components/EventTicketsPanel";
 import { useCart } from "@/features/events/hooks/useCart";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth/context/AuthContext";
 import { ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { toast } from "sonner";
@@ -90,36 +90,33 @@ const EventDetail = () => {
     },
     onError: (message) => toast.error(message),
   });
-  const { data: event, isLoading, error } = useEvent(
+  const { data: event, isLoading, error, refetch, isFetching } = useEvent(
     id,
     session?.access_token,
-    !!user && !!session?.access_token && !authLoading,
+    !authLoading,
   );
+  const isSignedIn = !!user && !!session?.access_token;
   const { data: cartData } = useCart(
     session?.access_token,
-    !!user && !!session?.access_token && !authLoading,
+    !authLoading && !!session?.access_token,
   );
   const cartEvent = cartData?.fullDetail?.event;
   const cartTickets =
     cartEvent && event && cartEvent.id === event.id
       ? cartData?.fullDetail?.tickets ?? []
       : [];
-  const [isTrailerOpen, setIsTrailerOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
-  useEffect(() => {
-    document.body.style.overflow = isTrailerOpen ? "hidden" : "unset";
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isTrailerOpen]);
-
   const handleAddToCart = () => {
+    if (!isSignedIn) {
+      navigate(getAuthUrl(location.pathname));
+      return;
+    }
     if (!event?.id) return;
     addToCart(event.id);
   };
 
-  if (authLoading || isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -130,26 +127,50 @@ const EventDetail = () => {
     );
   }
 
-  if (!user) {
+  if (isLoading || isFetching) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="container py-20 text-center">
-          <p className="text-lg mb-4">Please sign in to view event details.</p>
-          <Link to={getAuthUrl(location.pathname)}>
-            <Button>Sign in</Button>
-          </Link>
+        <div className="container py-10">
+          <p className="text-center text-muted-foreground">Loading event details...</p>
         </div>
       </div>
     );
   }
 
   if (error || !event) {
+    const message = (error as Error)?.message ?? "";
+    const isAuthError = /unauthorized|invalid token|session expired/i.test(message);
+    const needsSignIn = /sign in to view/i.test(message);
+
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="container py-10">
-          <p className="text-center text-destructive">Event not found.</p>
+        <div className="container py-10 text-center space-y-4">
+          {isAuthError ? (
+            <>
+              <p className="text-destructive">Your session expired. Please sign in again.</p>
+              <Button onClick={() => navigate(getAuthUrl(location.pathname))}>
+                Sign in
+              </Button>
+            </>
+          ) : needsSignIn ? (
+            <>
+              <p className="text-destructive">{message}</p>
+              <Button onClick={() => navigate(getAuthUrl(location.pathname))}>
+                Sign in
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-destructive">
+                {message || "Event not found."}
+              </p>
+              <Button variant="outline" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -295,18 +316,14 @@ const EventDetail = () => {
                   <Button
                     className="w-full rounded-xl bg-red-600 px-8 py-4 text-lg font-bold text-white shadow-2xl transition-all hover:bg-red-700 hover:shadow-red-600/50 sm:w-auto sm:py-5 sm:px-12"
                     onClick={handleAddToCart}
-                    disabled={isAdding}
+                    disabled={isSignedIn && isAdding}
                   >
                     <ShoppingCart className="mr-2 h-5 w-5" />
-                    {isAdding ? "Adding..." : "Add to Cart"}
-                  </Button>
-
-                  <Button
-                    onClick={() => setIsTrailerOpen(true)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-white/60 bg-black/50 px-6 py-4 text-lg font-bold text-white shadow-2xl backdrop-blur-sm transition-all hover:bg-black/70 sm:w-auto sm:border-white/50 sm:bg-white/10 sm:py-5 sm:px-10 sm:hover:bg-white/20"
-                  >
-                    <Play className="h-5 w-5 fill-white sm:h-6 sm:w-6" />
-                    Watch Trailer
+                    {isSignedIn
+                      ? isAdding
+                        ? "Adding..."
+                        : "Add to Cart"
+                      : "Book tickets"}
                   </Button>
                 </div>
               </div>
@@ -314,71 +331,6 @@ const EventDetail = () => {
           </div>
         </div>
       </section>
-
-      {/* Trailer modal — MovieDetail-style shell */}
-      {isTrailerOpen && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-0 sm:p-4 animate-in fade-in duration-200"
-          onClick={() => setIsTrailerOpen(false)}
-        >
-          <div
-            className="relative w-full h-full sm:h-auto sm:max-w-5xl bg-black sm:rounded-2xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-3 sm:p-4 bg-gradient-to-b from-black/80 to-transparent">
-              <div className="min-w-0 pr-4">
-                <h3 className="text-white font-bold text-sm sm:text-base truncate">
-                  {event.name}
-                </h3>
-                <p className="text-gray-400 text-xs">Event preview</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsTrailerOpen(false)}
-                className="bg-red-600 hover:bg-red-700 text-white rounded-full p-2 sm:p-2.5 transition-all shrink-0"
-                aria-label="Close preview"
-              >
-                <X className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-            </div>
-
-            <div className="relative w-full aspect-video sm:mt-12 bg-black flex items-center justify-center">
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={event.name}
-                  className="w-full h-full object-contain max-h-[70vh]"
-                />
-              ) : (
-                <p className="text-white/70 p-8">Preview image not available.</p>
-              )}
-            </div>
-
-            <div className="hidden sm:block bg-[#0f0f0f] border-t border-gray-800 p-6">
-              <h2 className="text-xl font-bold text-white mb-2">{event.name}</h2>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                Official event preview from Garba Town. Full trailer integration coming soon.
-              </p>
-              <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-500">
-                {duration && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {duration}
-                  </span>
-                )}
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {formatShortDate(event.start_date)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  {ratingDisplay}/5
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* About only — no cast/crew (event API has no cast/crew data) */}
       <section className="bg-gray-50 py-8 sm:py-10 md:py-12">
@@ -404,29 +356,43 @@ const EventDetail = () => {
             </span>
           </div>
 
-          {cartTickets.length > 0 ? (
-            <div className="mt-8">
-              <EventTicketsPanel
-                eventId={event.id}
-                tickets={cartTickets}
-                userToken={session?.access_token}
-                title="Buy tickets"
-                className="rounded-xl border bg-white p-4 sm:p-6"
-              />
-            </div>
+          {isSignedIn ? (
+            cartTickets.length > 0 ? (
+              <div className="mt-8">
+                <EventTicketsPanel
+                  eventId={event.id}
+                  eventName={event.name}
+                  tickets={cartTickets}
+                  userToken={session?.access_token}
+                  title="Buy tickets"
+                  className="rounded-xl border bg-white p-4 sm:p-6"
+                />
+              </div>
+            ) : (
+              <div className="mt-8 rounded-xl border border-dashed bg-white p-4 sm:p-6 text-sm text-muted-foreground">
+                Add this event to your cart to see ticket types and buy tickets.
+              </div>
+            )
           ) : (
-            <div className="mt-8 rounded-xl border border-dashed bg-white p-4 sm:p-6 text-sm text-muted-foreground">
-              Add this event to your cart to see ticket types and buy tickets.
+            <div className="mt-8 rounded-xl border bg-white p-4 sm:p-6 text-center space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Sign in to add this event to your cart, choose tickets, and complete payment.
+              </p>
+              <Button onClick={() => navigate(getAuthUrl(location.pathname))}>
+                Book tickets
+              </Button>
             </div>
           )}
 
-          <div className="mt-8">
-            <EventRatingForm
-              eventId={event.id}
-              currentRating={ratingValue}
-              userToken={session?.access_token}
-            />
-          </div>
+          {isSignedIn ? (
+            <div className="mt-8">
+              <EventRatingForm
+                eventId={event.id}
+                currentRating={ratingValue}
+                userToken={session?.access_token}
+              />
+            </div>
+          ) : null}
 
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {typeof event.max_tickets === "number" && (

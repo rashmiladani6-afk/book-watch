@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Heart, ThumbsUp } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useEventLike } from "@/features/events/hooks/useEventLike";
+import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { cn } from "@/lib/utils";
 
 interface EventLikeButtonProps {
@@ -19,6 +21,8 @@ const EventLikeButton = ({
   variant = "card",
   className,
 }: EventLikeButtonProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isLiked, setIsLiked] = useState(isLikedProp);
   const { toggleLike, isUpdating } = useEventLike(userToken);
 
@@ -29,6 +33,12 @@ const EventLikeButton = ({
   const handleClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
+
+    if (!userToken) {
+      toast.info("Sign in to like events");
+      navigate(getAuthUrl(`${location.pathname}${location.search}`));
+      return;
+    }
 
     try {
       const next = await toggleLike(eventId, isLiked);

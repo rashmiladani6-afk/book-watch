@@ -6,17 +6,20 @@ import TimerCarousel from "@/shared/components/common/TimerCarousel";
 import { Button } from "@/shared/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePopularEvents } from "@/features/events/hooks/usePopularEvents";
+import { useNearbyEvents } from "@/features/location/hooks/useNearbyEvents";
+import { useSavedLocation } from "@/features/location/hooks/useSavedLocation";
 import type { PopularEvent } from "@/features/events/services/eventService";
 import EventLikeButton from "@/features/events/components/EventLikeButton";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth/context/AuthContext";
 import { generateRoute, ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
+import { resolveGarbaAssetUrl } from "@/lib/garba/assetUrl";
 
-const getPopularEventImageUrl = (image: string | null | undefined) => {
-  if (!image) return null;
-  if (image.startsWith("http://") || image.startsWith("https://")) return image;
-  return `/garba-auth${image.startsWith("/") ? image : `/${image}`}`;
-};
+const DEFAULT_EVENT_IMAGE =
+  "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1200&q=80";
+
+const getPopularEventImageUrl = (image: string | null | undefined) =>
+  resolveGarbaAssetUrl(image, DEFAULT_EVENT_IMAGE) ?? DEFAULT_EVENT_IMAGE;
 
 const formatEventDate = (dateStr: string) => {
   if (!dateStr) return "";
@@ -38,16 +41,32 @@ const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user, session, loading: authLoading } = useAuth();
+  const { location: savedLocation, hasCoords: hasSavedCoords } = useSavedLocation();
+
   const {
     data: popularEventsData,
     isLoading: popularEventsLoading,
     isError: popularEventsError,
   } = usePopularEvents(
     session?.access_token,
-    !!user && !!session?.access_token && !authLoading,
+    !authLoading && !hasSavedCoords,
   );
 
-  const popularEvents = popularEventsData?.data ?? [];
+  const {
+    data: nearbyEventsData,
+    isLoading: nearbyEventsLoading,
+    isError: nearbyEventsError,
+  } = useNearbyEvents(
+    session?.access_token,
+    savedLocation?.latitude,
+    savedLocation?.longitude,
+    !authLoading && hasSavedCoords,
+  );
+
+  const activeEventsData = hasSavedCoords ? nearbyEventsData : popularEventsData;
+  const eventsLoading = hasSavedCoords ? nearbyEventsLoading : popularEventsLoading;
+  const eventsError = hasSavedCoords ? nearbyEventsError : popularEventsError;
+  const popularEvents = activeEventsData?.data ?? [];
 
   const filteredEvents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -79,8 +98,8 @@ const Home = () => {
     weeklyEvents.length > 0 ? weeklyEvents : filteredEvents,
   );
   const latestAddedEvents = [...filteredEvents].sort((a, b) => Number(b.id) - Number(a.id));
-  const showPopularEvents = !!user && filteredEvents.length > 0;
-  const showPopularEventsLoading = !!user && popularEventsLoading;
+  const showPopularEvents = filteredEvents.length > 0;
+  const showPopularEventsLoading = eventsLoading;
 
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;
@@ -98,9 +117,7 @@ const Home = () => {
         eventSlides={topRatedEvents.map((event) => ({
           id: event.id,
           title: event.name,
-          image:
-            getPopularEventImageUrl(event.image) ||
-            "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1200&q=80",
+          image: getPopularEventImageUrl(event.image),
           subtitle: formatEventDate(event.start_date),
           badge: "Recommended",
           rating: Number(event.rating ?? 0),
@@ -108,9 +125,7 @@ const Home = () => {
         sideEventCards={latestAddedEvents.map((event) => ({
           id: event.id,
           title: event.name,
-          image:
-            getPopularEventImageUrl(event.image) ||
-            "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1200&q=80",
+          image: getPopularEventImageUrl(event.image),
           subtitle: formatEventDate(event.start_date),
           badge: "Latest",
           rating: Number(event.rating ?? 0),
@@ -125,7 +140,7 @@ const Home = () => {
               <ChevronRight size={20} />
             </h2>
             {user && (
-              <Link to="/events/list">
+              <Link to={ROUTES.EVENTS_LIST}>
                 <Button variant="outline" size="sm">
                   View all
                 </Button>
@@ -216,26 +231,18 @@ const Home = () => {
                   );
                 })}
 
-              {!authLoading && !user && (
-                <div className="flex-none w-full min-w-[280px] max-w-md bg-white rounded-lg shadow-md p-6 snap-start">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Sign in to view popular events from Garba Town.
-                  </p>
-                  <Link to={getAuthUrl(ROUTES.HOME)}>
-                    <Button className="bg-[#8B5E3C] hover:bg-[#5C4033] text-white">
-                      Sign in
-                    </Button>
-                  </Link>
+              {!showPopularEventsLoading && eventsError && (
+                <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm text-red-600 space-y-3">
+                  <p>Could not load events right now.</p>
+                  {!user && (
+                    <Link to={getAuthUrl(ROUTES.HOME)}>
+                      <Button size="sm" variant="outline">Sign in</Button>
+                    </Link>
+                  )}
                 </div>
               )}
 
-              {!showPopularEventsLoading && user && popularEventsError && (
-                <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm text-red-600">
-                  Could not load popular events. Please sign out and sign in again.
-                </div>
-              )}
-
-              {!showPopularEventsLoading && user && !popularEventsError && filteredEvents.length === 0 && (
+              {!showPopularEventsLoading && !eventsError && filteredEvents.length === 0 && (
                 <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm text-gray-600">
                   {searchQuery.trim()
                     ? "No events match your search."
