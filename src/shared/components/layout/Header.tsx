@@ -23,6 +23,7 @@ import {
   saveCityName,
   saveLocation,
 } from "@/features/location/utils/locationStorage";
+import AppLogo from "@/shared/components/common/AppLogo";
 
 const popularCities = [
   { name: "Mumbai", icon: "🏢" },
@@ -387,10 +388,10 @@ const Header = ({ onSearch }: HeaderProps) => {
 
         <button
           onClick={() => { clearError(); setScreen('signup'); }}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-[#8B5E3C] rounded-lg hover:bg-[#fdf8f4] transition-colors"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-[#955F3B] rounded-lg hover:bg-[#f5ebe3] transition-colors"
         >
-          <User className="h-5 w-5 text-[#8B5E3C]" />
-          <span className="text-[#8B5E3C] font-medium">Create Account</span>
+          <User className="h-5 w-5 text-[#955F3B]" />
+          <span className="text-[#955F3B] font-medium">Create Account</span>
         </button>
 
         <button
@@ -477,14 +478,14 @@ const Header = ({ onSearch }: HeaderProps) => {
         <Button
           type="submit"
           disabled={loading}
-          className="w-full h-12 bg-[#8B5E3C] hover:bg-[#5C4033] text-white font-medium mt-2 rounded-lg"
+          className="w-full h-12 bg-[#955F3B] hover:bg-[#7a4d30] text-white font-medium mt-2 rounded-lg"
         >
           {loading ? "Creating account..." : "Create Account"}
         </Button>
 
         <p className="text-center text-sm text-gray-500">
           Already have an account?{" "}
-          <button type="button" onClick={() => { clearError(); setSigninMode('login'); setScreen('signin'); }} className="text-[#8B5E3C] hover:underline font-medium">
+          <button type="button" onClick={() => { clearError(); setSigninMode('login'); setScreen('signin'); }} className="text-[#955F3B] hover:underline font-medium">
             Sign In
           </button>
         </p>
@@ -536,7 +537,7 @@ const Header = ({ onSearch }: HeaderProps) => {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-12 bg-[#8B5E3C] hover:bg-[#5C4033] text-white font-medium rounded-lg"
+            className="w-full h-12 bg-[#955F3B] hover:bg-[#7a4d30] text-white font-medium rounded-lg"
           >
             {loading ? 'Sending...' : 'Send reset OTP'}
           </Button>
@@ -546,7 +547,7 @@ const Header = ({ onSearch }: HeaderProps) => {
             <button
               type="button"
               onClick={() => { clearError(); setSigninMode('login'); }}
-              className="text-[#8B5E3C] hover:underline font-medium"
+              className="text-[#955F3B] hover:underline font-medium"
             >
               Sign In
             </button>
@@ -586,7 +587,7 @@ const Header = ({ onSearch }: HeaderProps) => {
               <button
                 type="button"
                 onClick={() => { clearError(); setSigninMode('forgot'); }}
-                className="text-sm text-[#8B5E3C] hover:underline font-medium"
+                className="text-sm text-[#955F3B] hover:underline font-medium"
               >
                 Forgot password?
               </button>
@@ -598,7 +599,7 @@ const Header = ({ onSearch }: HeaderProps) => {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-12 bg-[#8B5E3C] hover:bg-[#5C4033] text-white font-medium rounded-lg"
+            className="w-full h-12 bg-[#955F3B] hover:bg-[#7a4d30] text-white font-medium rounded-lg"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
@@ -608,7 +609,7 @@ const Header = ({ onSearch }: HeaderProps) => {
             <button
               type="button"
               onClick={() => { clearError(); setSigninMode('login'); setScreen('signup'); }}
-              className="text-[#8B5E3C] hover:underline font-medium"
+              className="text-[#955F3B] hover:underline font-medium"
             >
               Create Account
             </button>
@@ -645,7 +646,7 @@ const Header = ({ onSearch }: HeaderProps) => {
               value={digit}
               onChange={(e) => handleOtpChange(index, e.target.value)}
               onKeyDown={(e) => handleOtpKeyDown(index, e)}
-              className="w-12 h-12 sm:w-14 sm:h-14 text-center text-lg font-semibold border-2 rounded-lg focus:border-[#8B5E3C]"
+              className="w-12 h-12 sm:w-14 sm:h-14 text-center text-lg font-semibold border-2 rounded-lg focus:border-[#955F3B]"
             />
           ))}
         </div>
@@ -656,7 +657,7 @@ const Header = ({ onSearch }: HeaderProps) => {
             : (
               <button
                 type="button"
-                className="text-[#8B5E3C] hover:underline font-medium"
+                className="text-[#955F3B] hover:underline font-medium"
                     onClick={async () => {
                   if (!signupEmail || !signupPassword) {
                     toast.info("You can sign in with your password from the Sign In screen.");
@@ -690,7 +691,7 @@ const Header = ({ onSearch }: HeaderProps) => {
         <Button
           type="submit"
           disabled={loading || otp.join("").length !== 6}
-          className="w-full h-12 bg-[#8B5E3C] hover:bg-[#5C4033] text-white font-medium rounded-lg disabled:opacity-50"
+          className="w-full h-12 bg-[#955F3B] hover:bg-[#7a4d30] text-white font-medium rounded-lg disabled:opacity-50"
         >
           {loading ? "Verifying..." : "Verify & Sign In"}
         </Button>
@@ -703,26 +704,19 @@ const Header = ({ onSearch }: HeaderProps) => {
       <div className="container flex h-14 sm:h-16 items-center justify-between px-2 sm:px-4 max-w-full">
         {/* Left Section */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-5 flex-1 min-w-0">
-          <Link to="/" className="flex shrink-0 items-center md:hidden">
-            <h1
-              className="whitespace-nowrap text-xl font-serif italic tracking-wide sm:text-2xl"
-              style={{ color: "#C9B194" }}
-            >
-              book
-              <span style={{ color: "#F1F0E4" }}>&</span>
-              watch
-            </h1>
-          </Link>
+          <div className="flex shrink-0 items-center md:hidden">
+            <AppLogo compact imageClassName="h-10 w-[4.5rem]" />
+          </div>
 
           <form
             onSubmit={handleSearch}
             className="hidden md:flex items-center gap-2 flex-1 max-w-sm lg:max-w-md xl:max-w-lg mx-auto"
           >
             <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-2 lg:left-3 top-1/2 h-3.5 w-3.5 lg:h-4 lg:w-4 -translate-y-1/2 text-[#8B5E3C]" />
+              <Search className="absolute left-2 lg:left-3 top-1/2 h-3.5 w-3.5 lg:h-4 lg:w-4 -translate-y-1/2 text-[#955F3B]" />
               <Input
-                placeholder="Search for Movies, Events, Plays, Sports"
-                className="pl-8 lg:pl-10 pr-8 lg:pr-10 border border-gray-300 focus:border-[#8B5E3C] focus:ring-0 focus:outline-none text-[#3E2723] text-sm lg:text-base h-9 lg:h-10"
+                placeholder="Search Garba events, venues, passes"
+                className="pl-8 lg:pl-10 pr-8 lg:pr-10 border border-gray-300 focus:border-[#955F3B] focus:ring-0 focus:outline-none text-[#111827] text-sm lg:text-base h-9 lg:h-10"
                 style={{ boxShadow: "none", outline: "none" }}
                 value={searchQuery}
                 onChange={handleSearchChange}
@@ -739,7 +733,7 @@ const Header = ({ onSearch }: HeaderProps) => {
             </div>
             <Button
               type="submit"
-              className="bg-[#8B5E3C] hover:bg-[#5C4033] text-white shrink-0 h-9 lg:h-10 px-3 lg:px-4 text-sm lg:text-base"
+              className="bg-[#955F3B] hover:bg-[#7a4d30] text-white shrink-0 h-9 lg:h-10 px-3 lg:px-4 text-sm lg:text-base"
             >
               Search
             </Button>
@@ -751,7 +745,7 @@ const Header = ({ onSearch }: HeaderProps) => {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden text-[#8B5E3C] h-8 w-8 sm:h-9 sm:w-9"
+            className="md:hidden text-[#955F3B] h-8 w-8 sm:h-9 sm:w-9"
             onClick={() => setShowMobileSearch(true)}
           >
             <Search className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -763,7 +757,7 @@ const Header = ({ onSearch }: HeaderProps) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-[#8B5E3C] hover:text-[#5C4033] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
+                  className="text-[#955F3B] hover:text-[#7a4d30] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
                   aria-label="Cart"
                 >
                   <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -786,7 +780,7 @@ const Header = ({ onSearch }: HeaderProps) => {
                   setShow(true);
                   setScreen("signin");
                 }}
-                className="text-[#8B5E3C] hover:text-[#5C4033] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
+                className="text-[#955F3B] hover:text-[#7a4d30] h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10"
                 aria-label="Cart"
               >
                 <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -797,7 +791,7 @@ const Header = ({ onSearch }: HeaderProps) => {
           <Button
             variant="default"
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-1 bg-[#8B5E3C] hover:bg-[#5B3A38] text-xs sm:text-sm h-8 sm:h-9 lg:h-10 px-2 sm:px-3 lg:px-4"
+            className="flex items-center gap-1 bg-[#955F3B] hover:bg-[#7a4d30] text-xs sm:text-sm h-8 sm:h-9 lg:h-10 px-2 sm:px-3 lg:px-4"
           >
             <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 shrink-0" />
             <span className="truncate max-w-[60px] sm:max-w-[100px] md:max-w-none">
@@ -810,7 +804,7 @@ const Header = ({ onSearch }: HeaderProps) => {
               variant="outline"
               size="sm"
               onClick={handleSignOut}
-              className="flex items-center gap-1 sm:gap-2 h-8 sm:h-9 lg:h-10 px-2 sm:px-3 lg:px-4 text-xs sm:text-sm border-[#8B5E3C] text-[#8B5E3C] hover:bg-[#8B5E3C]/10 hover:text-[#5C4033]"
+              className="flex items-center gap-1 sm:gap-2 h-8 sm:h-9 lg:h-10 px-2 sm:px-3 lg:px-4 text-xs sm:text-sm border-[#955F3B] text-[#955F3B] hover:bg-[#955F3B]/10 hover:text-[#7a4d30]"
             >
               <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Sign Out</span>
@@ -818,7 +812,7 @@ const Header = ({ onSearch }: HeaderProps) => {
           ) : (
             <>
               <Button
-                className="bg-[#8B5E3C] hover:bg-[#5C4033] flex items-center gap-1 sm:gap-2 h-8 sm:h-9 lg:h-10 px-2 sm:px-3 lg:px-4 text-xs sm:text-sm"
+                className="bg-[#955F3B] hover:bg-[#7a4d30] flex items-center gap-1 sm:gap-2 h-8 sm:h-9 lg:h-10 px-2 sm:px-3 lg:px-4 text-xs sm:text-sm"
                 onClick={() => {
                   setScreen("options");
                   setShow(true);
@@ -856,11 +850,11 @@ const Header = ({ onSearch }: HeaderProps) => {
               </Button>
               <form onSubmit={handleSearch} className="flex items-center gap-2 flex-1">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B5E3C]" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#955F3B]" />
                   <Input
                     autoFocus
-                    placeholder="Search for Movies, Events, Plays, Sports"
-                    className="pl-10 pr-10 border border-gray-300 focus:border-[#8B5E3C] focus:ring-0 focus:outline-none rounded-lg h-10 sm:h-11 text-sm sm:text-base"
+                    placeholder="Search Garba events, venues, passes"
+                    className="pl-10 pr-10 border border-gray-300 focus:border-[#955F3B] focus:ring-0 focus:outline-none rounded-lg h-10 sm:h-11 text-sm sm:text-base"
                     style={{ boxShadow: "none", outline: "none" }}
                     value={searchQuery}
                     onChange={handleSearchChange}
@@ -877,7 +871,7 @@ const Header = ({ onSearch }: HeaderProps) => {
                 </div>
                 <Button
                   type="submit"
-                  className="bg-[#8B5E3C] hover:bg-[#5C4033] text-white shrink-0 h-10 sm:h-11 px-4 sm:px-6 text-sm sm:text-base"
+                  className="bg-[#955F3B] hover:bg-[#7a4d30] text-white shrink-0 h-10 sm:h-11 px-4 sm:px-6 text-sm sm:text-base"
                 >
                   Go
                 </Button>
@@ -889,7 +883,7 @@ const Header = ({ onSearch }: HeaderProps) => {
 
       {/* City Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="w-[95vw] sm:w-[90vw] md:max-w-lg lg:max-w-xl max-h-[85vh] sm:max-h-[80vh] text-[#5B3A38] rounded-lg p-4 sm:p-6">
+        <DialogContent className="w-[95vw] sm:w-[90vw] md:max-w-lg lg:max-w-xl max-h-[85vh] sm:max-h-[80vh] text-[#7a4d30] rounded-lg p-4 sm:p-6">
           <div>
             <h2 className="text-lg sm:text-xl font-semibold mb-3">Select Your City</h2>
           </div>
@@ -899,7 +893,7 @@ const Header = ({ onSearch }: HeaderProps) => {
               variant="ghost"
               onClick={detectLocation}
               disabled={locationUpdating}
-              className="text-[#8B5E3C] bg-[#F7F7F7] hover:text-[#C2A68C] mb-3 flex items-center gap-2 hover:bg-[#EFE9E3] h-10 sm:h-11 text-sm sm:text-base w-full"
+              className="text-[#955F3B] bg-[#F7F7F7] hover:text-[#7a4d30] mb-3 flex items-center gap-2 hover:bg-[#f5ebe3] h-10 sm:h-11 text-sm sm:text-base w-full"
             >
               📍 {locationUpdating ? "Updating location..." : "Detect my location"}
             </Button>
@@ -920,7 +914,7 @@ const Header = ({ onSearch }: HeaderProps) => {
                   ))}
                 </div>
                 <div className="text-center mt-3">
-                  <Button variant="link" onClick={toggleShowAllCities} className="text-[#B17457] underline text-sm sm:text-base">
+                  <Button variant="link" onClick={toggleShowAllCities} className="text-[#955F3B] underline text-sm sm:text-base">
                     Show all cities
                   </Button>
                 </div>
@@ -933,14 +927,14 @@ const Header = ({ onSearch }: HeaderProps) => {
                     <p
                       key={i}
                       onClick={() => handleCitySelect(city)}
-                      className="cursor-pointer text-[#B17457] hover:text-[#C2A68C] py-1.5 sm:py-2 text-sm sm:text-base border-b border-gray-100 last:border-0"
+                      className="cursor-pointer text-[#955F3B] hover:text-[#7a4d30] py-1.5 sm:py-2 text-sm sm:text-base border-b border-gray-100 last:border-0"
                     >
                       {city}
                     </p>
                   ))}
                 </div>
                 <div className="text-center mt-3">
-                  <Button variant="link" onClick={toggleShowAllCities} className="text-[#B17457] underline text-sm sm:text-base">
+                  <Button variant="link" onClick={toggleShowAllCities} className="text-[#955F3B] underline text-sm sm:text-base">
                     Hide all cities
                   </Button>
                 </div>

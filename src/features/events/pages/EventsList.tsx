@@ -1,28 +1,14 @@
 import { usePopularEvents } from "@/features/events/hooks/usePopularEvents";
 import { useAuth } from "@/features/auth/context/AuthContext";
-import { Card } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
+import EventTrendCard from "@/features/events/components/EventTrendCard";
 import { Link } from "react-router-dom";
-import { Star } from "lucide-react";
-import { generateRoute, ROUTES } from "@/shared/constants/routes";
+import { ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
-import EventLikeButton from "@/features/events/components/EventLikeButton";
-
-const getEventImageUrl = (image: string | null | undefined) => {
-  if (!image) return null;
-  if (image.startsWith("http://") || image.startsWith("https://")) return image;
-  return `/garba-auth${image.startsWith("/") ? image : `/${image}`}`;
-};
-
-const formatEventDate = (dateStr: string) => {
-  if (!dateStr) return "";
-  const date = new Date(dateStr.replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return dateStr;
-  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+import { brand } from "@/shared/constants/theme";
 
 const EventsList = () => {
   const { user, session, loading: authLoading } = useAuth();
@@ -30,7 +16,7 @@ const EventsList = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-white">
         <Header />
         <div className="container py-10">
           <p className="text-center text-muted-foreground">Loading events...</p>
@@ -41,10 +27,10 @@ const EventsList = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-white">
         <Header />
         <div className="container py-10">
-          <p className="text-center text-muted-foreground">Loading popular events...</p>
+          <p className="text-center text-muted-foreground">Loading trending events...</p>
         </div>
       </div>
     );
@@ -52,12 +38,10 @@ const EventsList = () => {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-white">
         <Header />
         <div className="container py-10 text-center space-y-4">
-          <p className="text-destructive">
-            Unable to load events. Please try again later.
-          </p>
+          <p className="text-destructive">Unable to load events. Please try again later.</p>
           {!user && (
             <Link to={getAuthUrl(ROUTES.EVENTS)}>
               <Button variant="outline">Sign in</Button>
@@ -71,98 +55,34 @@ const EventsList = () => {
   const events = data.data ?? [];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <Header />
       <div className="container py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Popular Events</h1>
+            <h1 className="text-2xl md:text-3xl font-bold" style={{ color: brand.text }}>
+              Trending Events
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Fetched from Garba Town popular events API
+              Discover Garba nights, mandal events, and passes near you
             </p>
           </div>
-          <Badge variant="outline">
-            Total: {data.meta?.total ?? events.length}
-          </Badge>
+          <Badge variant="outline">Total: {data.meta?.total ?? events.length}</Badge>
         </div>
 
         {events.length === 0 ? (
-          <p className="text-center text-muted-foreground py-12">No popular events found.</p>
+          <p className="text-center text-muted-foreground py-12">No trending events found.</p>
         ) : (
           <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {events.map((event) => {
-              const imageUrl = getEventImageUrl(event.image);
-
-              return (
-                <Card
-                  key={event.id}
-                  className="overflow-hidden flex flex-col h-full"
-                >
-                  <div className="relative">
-                    {imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt={event.name}
-                        className="w-full h-40 object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-40 bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] flex items-center justify-center text-white text-3xl font-bold">
-                        {event.name.charAt(0)}
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2">
-                      <EventLikeButton
-                        eventId={event.id}
-                        isLiked={Boolean(event.is_like)}
-                        userToken={session?.access_token}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-4 flex flex-col flex-1 justify-between space-y-3">
-                    <div className="space-y-2">
-                      {event.status && (
-                        <Badge variant="secondary" className="text-xs">
-                          {event.status}
-                        </Badge>
-                      )}
-                      <h2 className="font-semibold text-lg line-clamp-2">
-                        {event.name}
-                      </h2>
-                      <p className="text-xs text-muted-foreground">
-                        {formatEventDate(event.start_date)} → {formatEventDate(event.end_date)}
-                      </p>
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {event.address || event.organizer || "Event"}
-                      </p>
-                      {event.rating > 0 && (
-                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                          {event.rating.toFixed(1)}/5
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="text-sm text-muted-foreground">
-                        {event.price ? (
-                          <span>
-                            From <span className="font-semibold">₹{event.price}</span>
-                          </span>
-                        ) : (
-                          <span>See details</span>
-                        )}
-                      </div>
-                      <Link to={generateRoute.eventDetail(event.id)}>
-                        <Button size="sm" variant="outline">
-                          View Details
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
+            {events.map((event, index) => (
+              <EventTrendCard
+                key={event.id}
+                event={event}
+                index={index}
+                userToken={session?.access_token}
+                variant="grid"
+              />
+            ))}
           </div>
         )}
       </div>

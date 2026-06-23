@@ -231,7 +231,7 @@ const EventDetail = () => {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="h-full w-full bg-gradient-to-br from-[#3E2723] via-[#5D4037] to-[#1a1a1a]" />
+            <div className="h-full w-full bg-gradient-to-br from-[#111827] via-[#5c3d25] to-[#1a1a1a]" />
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/70 to-black/90 sm:bg-gradient-to-r sm:from-black/80 sm:via-black/50 sm:to-black/60" />
         </div>
@@ -247,7 +247,7 @@ const EventDetail = () => {
                     className="h-44 w-28 rounded-xl object-cover shadow-2xl sm:h-80 sm:w-56 md:h-96 md:w-64 lg:h-[430px] lg:w-72"
                   />
                 ) : (
-                  <div className="flex h-44 w-28 items-center justify-center rounded-xl bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] text-4xl font-bold text-white shadow-2xl sm:h-80 sm:w-56 md:h-96 md:w-64 lg:h-[430px] lg:w-72">
+                  <div className="flex h-44 w-28 items-center justify-center rounded-xl bg-gradient-to-br from-[#955F3B] to-[#7a4d30] text-4xl font-bold text-white shadow-2xl sm:h-80 sm:w-56 md:h-96 md:w-64 lg:h-[430px] lg:w-72">
                     {event.name.charAt(0)}
                   </div>
                 )}

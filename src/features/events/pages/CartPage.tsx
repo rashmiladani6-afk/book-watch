@@ -201,7 +201,7 @@ const CartPage = () => {
                       {imageUrl ? (
                         <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] text-2xl font-bold text-white">
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#955F3B] to-[#7a4d30] text-2xl font-bold text-white">
                           {name.charAt(0)}
                         </div>
                       )}

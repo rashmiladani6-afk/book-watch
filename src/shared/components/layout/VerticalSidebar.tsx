@@ -1,18 +1,22 @@
 import {
   Home,
   Calendar,
-  Heart,
   Ticket,
+  MapPin,
+  Music,
+  Trophy,
   Menu,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/shared/constants/routes";
 import { SIDEBAR_WIDTH_PX } from "@/shared/constants/layout";
+import { brand } from "@/shared/constants/theme";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import type { ReactNode } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/shared/components/ui/sheet";
 import { Button } from "@/shared/components/ui/button";
+import AppLogo from "@/shared/components/common/AppLogo";
 
 interface NavItem {
   id: string;
@@ -20,48 +24,58 @@ interface NavItem {
   icon: ReactNode;
   path: string;
   requiresAuth?: boolean;
+  navSection?: string;
 }
+
+const NAV_QUERY_KEY = "nav";
 
 const navItems: NavItem[] = [
   { id: "home", name: "Home", icon: <Home size={22} strokeWidth={1.75} />, path: ROUTES.HOME },
-  { id: "events", name: "Events", icon: <Calendar size={22} strokeWidth={1.75} />, path: ROUTES.EVENTS },
   {
-    id: "likes",
-    name: "Likes",
-    icon: <Heart size={22} strokeWidth={1.75} />,
-    path: ROUTES.FAVORITE_EVENTS,
-    requiresAuth: true,
+    id: "events",
+    name: "Events",
+    icon: <Calendar size={22} strokeWidth={1.75} />,
+    path: ROUTES.EVENTS_LIST,
+    navSection: "events",
   },
   {
-    id: "my-tickets",
-    name: "Tickets",
+    id: "pass",
+    name: "Pass",
     icon: <Ticket size={22} strokeWidth={1.75} />,
-    path: ROUTES.MY_TICKETS,
-    requiresAuth: true,
+    path: ROUTES.PASSES,
+  },
+  {
+    id: "venues",
+    name: "Venues",
+    icon: <MapPin size={22} strokeWidth={1.75} />,
+    path: ROUTES.VENUES,
+  },
+  {
+    id: "singers",
+    name: "Singers",
+    icon: <Music size={22} strokeWidth={1.75} />,
+    path: ROUTES.SINGERS,
+  },
+  {
+    id: "vip",
+    name: "VIP",
+    icon: <Trophy size={22} strokeWidth={1.75} />,
+    path: ROUTES.VIP,
   },
 ];
 
 const SidebarBrand = ({ compact = false }: { compact?: boolean }) => (
-  <Link
-    to={ROUTES.HOME}
-    className={`flex flex-col items-center text-center ${compact ? "gap-2" : "gap-2.5"}`}
-  >
-    <div
-      className={`flex items-center justify-center rounded-xl bg-[#8B5E3C] shadow-sm ${
-        compact ? "h-10 w-10" : "h-11 w-11"
-      }`}
-    >
-      <span className={`font-bold text-white ${compact ? "text-base" : "text-lg"}`}>B</span>
-    </div>
-    <span
-      className={`font-serif italic leading-none text-[#8B5E3C] ${
-        compact ? "text-sm" : "text-[13px] font-semibold"
-      }`}
-    >
-      book<span className="text-[#C9B194]">&</span>watch
-    </span>
-  </Link>
+  <AppLogo
+    compact={compact}
+    className="bg-transparent"
+    imageClassName={compact ? "h-11 w-[4.75rem]" : "h-14 w-[5.5rem]"}
+  />
 );
+
+const isEventsPath = (pathname: string) =>
+  pathname === ROUTES.EVENTS ||
+  pathname === ROUTES.EVENTS_LIST ||
+  (pathname.startsWith("/events/") && pathname !== ROUTES.FAVORITE_EVENTS);
 
 const VerticalSidebar = () => {
   const location = useLocation();
@@ -83,18 +97,30 @@ const VerticalSidebar = () => {
   };
 
   const isActive = (item: NavItem) => {
-    if (item.id === "home") return location.pathname === ROUTES.HOME;
-    if (item.id === "events") {
-      return (
-        location.pathname === ROUTES.EVENTS ||
-        location.pathname === ROUTES.EVENTS_LIST ||
-        (location.pathname.startsWith("/events/") &&
-          location.pathname !== ROUTES.FAVORITE_EVENTS)
-      );
+    const { pathname, search } = location;
+    const navSection = new URLSearchParams(search).get(NAV_QUERY_KEY);
+
+    switch (item.id) {
+      case "home":
+        return pathname === ROUTES.HOME;
+      case "pass":
+        return pathname === ROUTES.PASSES;
+      case "events": {
+        if (!isEventsPath(pathname)) return false;
+        if (pathname === ROUTES.EVENTS_LIST || pathname === ROUTES.EVENTS) {
+          return !navSection || navSection === "events";
+        }
+        return true;
+      }
+      case "venues":
+        return pathname === ROUTES.VENUES;
+      case "singers":
+        return pathname === ROUTES.SINGERS;
+      case "vip":
+        return pathname === ROUTES.VIP;
+      default:
+        return false;
     }
-    if (item.id === "likes") return location.pathname === ROUTES.FAVORITE_EVENTS;
-    if (item.id === "my-tickets") return location.pathname === ROUTES.MY_TICKETS;
-    return false;
   };
 
   const handleNavClick = (item: NavItem) => {
@@ -111,22 +137,29 @@ const VerticalSidebar = () => {
     if (variant === "mobile") {
       const mobileClass = `flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-sm font-medium transition-colors ${
         active
-          ? "bg-[#8B5E3C]/10 text-[#8B5E3C]"
-          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+          ? "text-[#955F3B]"
+          : "text-[#4b5563] hover:bg-gray-50 hover:text-gray-900"
       }`;
+      const mobileStyle = active ? { backgroundColor: brand.primaryLight } : undefined;
 
       if (item.requiresAuth && !user) {
         return (
-          <button key={item.id} type="button" onClick={() => handleNavClick(item)} className={mobileClass}>
-            <div className={active ? "text-[#8B5E3C]" : "text-gray-500"}>{item.icon}</div>
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => handleNavClick(item)}
+            className={mobileClass}
+            style={mobileStyle}
+          >
+            <div className={active ? "text-[#955F3B]" : "text-[#4b5563]"}>{item.icon}</div>
             <span>{item.name}</span>
           </button>
         );
       }
 
       return (
-        <Link key={item.id} to={item.path} className={mobileClass}>
-          <div className={active ? "text-[#8B5E3C]" : "text-gray-500"}>{item.icon}</div>
+        <Link key={item.id} to={item.path} className={mobileClass} style={mobileStyle}>
+          <div className={active ? "text-[#955F3B]" : "text-[#4b5563]"}>{item.icon}</div>
           <span>{item.name}</span>
         </Link>
       );
@@ -134,29 +167,45 @@ const VerticalSidebar = () => {
 
     const desktopClass = `relative flex w-full flex-col items-center justify-center gap-1.5 px-2 py-4 transition-colors ${
       active
-        ? "bg-[#8B5E3C]/10 text-[#8B5E3C]"
-        : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+        ? "text-[#955F3B]"
+        : "text-[#4b5563] hover:bg-gray-50 hover:text-gray-800"
     }`;
+    const desktopStyle = active ? { backgroundColor: brand.primaryLight } : undefined;
 
     const label = (
       <>
-        <div className={active ? "text-[#8B5E3C]" : "text-gray-500"}>{item.icon}</div>
+        <div className={active ? "text-[#955F3B]" : "text-[#4b5563]"}>{item.icon}</div>
         <span className="text-center text-[11px] font-semibold leading-tight">{item.name}</span>
       </>
     );
 
     if (item.requiresAuth && !user) {
       return (
-        <button key={item.id} type="button" onClick={() => handleNavClick(item)} className={desktopClass}>
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => handleNavClick(item)}
+          className={desktopClass}
+          style={desktopStyle}
+        >
+          {active && (
+            <div
+              className="absolute bottom-0 left-0 top-0 w-1"
+              style={{ backgroundColor: brand.primary }}
+            />
+          )}
           {label}
         </button>
       );
     }
 
     return (
-      <Link key={item.id} to={item.path} className={desktopClass}>
+      <Link key={item.id} to={item.path} className={desktopClass} style={desktopStyle}>
         {active && (
-          <div className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-[#8B5E3C]" />
+          <div
+            className="absolute bottom-0 left-0 top-0 w-1"
+            style={{ backgroundColor: brand.primary }}
+          />
         )}
         {label}
       </Link>
@@ -190,7 +239,10 @@ const VerticalSidebar = () => {
                   onClick={openProfile}
                   className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-gray-50"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8B5E3C] shadow-sm">
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-full shadow-sm"
+                    style={{ backgroundColor: brand.primary }}
+                  >
                     <span className="text-sm font-semibold text-white">{profileInitial}</span>
                   </div>
                   <div>
@@ -228,7 +280,10 @@ const VerticalSidebar = () => {
           onClick={openProfile}
           className="flex w-full flex-col items-center gap-1.5 border-t border-gray-100 py-5 transition-colors hover:bg-gray-50"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8B5E3C] shadow-sm">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-full shadow-sm"
+            style={{ backgroundColor: brand.primary }}
+          >
             <span className="text-sm font-semibold text-white">{profileInitial}</span>
           </div>
           <span className="text-[11px] font-semibold text-gray-600">Profile</span>

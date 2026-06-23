@@ -3,33 +3,20 @@ import { Link } from "react-router-dom";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
 import TimerCarousel from "@/shared/components/common/TimerCarousel";
+import EventTrendCard, {
+  getEventImageUrl,
+  getEventEntryCount,
+} from "@/features/events/components/EventTrendCard";
 import { Button } from "@/shared/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePopularEvents } from "@/features/events/hooks/usePopularEvents";
 import { useNearbyEvents } from "@/features/location/hooks/useNearbyEvents";
 import { useSavedLocation } from "@/features/location/hooks/useSavedLocation";
 import type { PopularEvent } from "@/features/events/services/eventService";
-import EventLikeButton from "@/features/events/components/EventLikeButton";
 import { useAuth } from "@/features/auth/context/AuthContext";
-import { generateRoute, ROUTES } from "@/shared/constants/routes";
+import { ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
-import { resolveGarbaAssetUrl } from "@/lib/garba/assetUrl";
-
-const DEFAULT_EVENT_IMAGE =
-  "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1200&q=80";
-
-const getPopularEventImageUrl = (image: string | null | undefined) =>
-  resolveGarbaAssetUrl(image, DEFAULT_EVENT_IMAGE) ?? DEFAULT_EVENT_IMAGE;
-
-const formatEventDate = (dateStr: string) => {
-  if (!dateStr) return "";
-  const date = new Date(dateStr.replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return dateStr;
-  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
-
-const getEventEntryCount = (event: PopularEvent) =>
-  event.attendees_count ?? event.attendee_count ?? event.booked_tickets ?? 0;
+import { brand } from "@/shared/constants/theme";
 
 const sortByRatingThenEntries = (events: PopularEvent[]) =>
   [...events].sort((a, b) => {
@@ -47,10 +34,7 @@ const Home = () => {
     data: popularEventsData,
     isLoading: popularEventsLoading,
     isError: popularEventsError,
-  } = usePopularEvents(
-    session?.access_token,
-    !authLoading && !hasSavedCoords,
-  );
+  } = usePopularEvents(session?.access_token, !authLoading && !hasSavedCoords);
 
   const {
     data: nearbyEventsData,
@@ -97,7 +81,6 @@ const Home = () => {
   const topRatedEvents = sortByRatingThenEntries(
     weeklyEvents.length > 0 ? weeklyEvents : filteredEvents,
   );
-  const latestAddedEvents = [...filteredEvents].sort((a, b) => Number(b.id) - Number(a.id));
   const showPopularEvents = filteredEvents.length > 0;
   const showPopularEventsLoading = eventsLoading;
 
@@ -109,43 +92,34 @@ const Home = () => {
     });
   };
 
+  const explorePassesPath = ROUTES.PASSES;
+
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-white">
       <Header onSearch={setSearchQuery} />
 
       <TimerCarousel
         eventSlides={topRatedEvents.map((event) => ({
           id: event.id,
           title: event.name,
-          image: getPopularEventImageUrl(event.image),
-          subtitle: formatEventDate(event.start_date),
-          badge: "Recommended",
-          rating: Number(event.rating ?? 0),
-        }))}
-        sideEventCards={latestAddedEvents.map((event) => ({
-          id: event.id,
-          title: event.name,
-          image: getPopularEventImageUrl(event.image),
-          subtitle: formatEventDate(event.start_date),
-          badge: "Latest",
-          rating: Number(event.rating ?? 0),
+          image: getEventImageUrl(event.image),
+          price: event.price,
+          address: event.address || event.organizer,
         }))}
       />
 
-      <section className="py-8 bg-[#F5F5F5]">
+      <section className="py-8 bg-white">
         <div className="container">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-[#3E2723] flex items-center gap-2">
-              Popular events
+            <h2 className="text-2xl font-semibold flex items-center gap-2" style={{ color: brand.text }}>
+              Trending events
               <ChevronRight size={20} />
             </h2>
-            {user && (
-              <Link to={ROUTES.EVENTS_LIST}>
-                <Button variant="outline" size="sm">
-                  View all
-                </Button>
-              </Link>
-            )}
+            <Link to={ROUTES.EVENTS_LIST}>
+              <Button variant="outline" size="sm">
+                View all
+              </Button>
+            </Link>
           </div>
 
           <div className="relative group">
@@ -156,10 +130,10 @@ const Home = () => {
               {showPopularEventsLoading &&
                 Array.from({ length: 4 }).map((_, index) => (
                   <div
-                    key={`popular-event-skeleton-${index}`}
+                    key={`trending-event-skeleton-${index}`}
                     className="flex-none w-[300px] bg-white rounded-lg overflow-hidden shadow-md snap-start animate-pulse"
                   >
-                    <div className="h-[400px] bg-gray-200" />
+                    <div className="h-[280px] bg-gray-200" />
                     <div className="p-3 space-y-2">
                       <div className="h-4 bg-gray-200 rounded w-3/4" />
                       <div className="h-4 bg-gray-200 rounded w-1/3" />
@@ -168,75 +142,24 @@ const Home = () => {
                 ))}
 
               {showPopularEvents &&
-                topRatedEvents.slice(0, 10).map((event, index) => {
-                  const imageUrl = getPopularEventImageUrl(event.image);
-
-                  return (
-                    <div
-                      key={event.id}
-                      className="flex-none w-[300px] bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 snap-start relative"
-                    >
-                      {index < 3 && (
-                        <div className="absolute top-2 left-2 z-10">
-                          <span className="px-2 py-1 bg-[#107C10] text-white text-xs font-semibold rounded">
-                            Featured
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="absolute top-2 right-2 z-10">
-                        <EventLikeButton
-                          eventId={event.id}
-                          isLiked={Boolean(event.is_like)}
-                          userToken={session?.access_token}
-                        />
-                      </div>
-
-                      <Link to={generateRoute.eventDetail(event.id)}>
-                        <div className="relative h-[400px] bg-gray-200">
-                          {imageUrl ? (
-                            <img
-                              src={imageUrl}
-                              alt={event.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] text-white text-4xl font-bold">
-                              {event.name.charAt(0)}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="p-3">
-                          <h3 className="font-semibold text-sm text-[#3E2723] mb-1 line-clamp-2 h-10">
-                            {event.name}
-                          </h3>
-                          <p className="text-xs text-gray-500 mb-1 line-clamp-1">
-                            {event.address || event.organizer}
-                          </p>
-                          <p className="text-xs text-gray-400 mb-1">
-                            {formatEventDate(event.start_date)}
-                          </p>
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-bold text-[#8B5E3C]">
-                              {event.price ? `₹ ${event.price}` : "See details"}
-                            </p>
-                            {event.rating > 0 && (
-                              <p className="text-xs text-gray-500">{event.rating.toFixed(1)}/5</p>
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-                    </div>
-                  );
-                })}
+                topRatedEvents.slice(0, 10).map((event, index) => (
+                  <EventTrendCard
+                    key={event.id}
+                    event={event}
+                    index={index}
+                    userToken={session?.access_token}
+                    variant="carousel"
+                  />
+                ))}
 
               {!showPopularEventsLoading && eventsError && (
                 <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm text-red-600 space-y-3">
                   <p>Could not load events right now.</p>
                   {!user && (
                     <Link to={getAuthUrl(ROUTES.HOME)}>
-                      <Button size="sm" variant="outline">Sign in</Button>
+                      <Button size="sm" variant="outline">
+                        Sign in
+                      </Button>
                     </Link>
                   )}
                 </div>
@@ -246,7 +169,7 @@ const Home = () => {
                 <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm text-gray-600">
                   {searchQuery.trim()
                     ? "No events match your search."
-                    : "No popular events available right now."}
+                    : "No trending events available right now."}
                 </div>
               )}
             </div>
@@ -270,6 +193,23 @@ const Home = () => {
               </>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="py-12 bg-[#f8fafc] border-t border-gray-100">
+        <div className="container text-center max-w-2xl mx-auto px-4">
+          <h2 className="text-xl md:text-2xl font-bold mb-3" style={{ color: brand.text }}>
+            Book Mandli Garba and Rataldi Garba passes in one place.
+          </h2>
+          <p className="text-gray-600 mb-6 text-sm md:text-base">
+            book&watch keeps event details, venue information, group lineups, and booking
+            actions simple for every Garba night.
+          </p>
+          <Link to={explorePassesPath}>
+            <Button style={{ backgroundColor: brand.primary }} className="hover:opacity-90 text-white">
+              Explore passes
+            </Button>
+          </Link>
         </div>
       </section>
 

@@ -118,7 +118,7 @@ const FavoriteEvents = () => {
                         className="w-full h-40 object-cover"
                       />
                     ) : (
-                      <div className="w-full h-40 bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] flex items-center justify-center text-white text-3xl font-bold">
+                      <div className="w-full h-40 bg-gradient-to-br from-[#955F3B] to-[#7a4d30] flex items-center justify-center text-white text-3xl font-bold">
                         {event.name.charAt(0)}
                       </div>
                     )}

@@ -332,7 +332,7 @@ const Payment = () => {
                     <strong>Verify Payment</strong>.
                   </p>
                   {cashfreeCompleted && (
-                    <p className="text-xs font-medium text-[#8B5E3C]">
+                    <p className="text-xs font-medium text-[#955F3B]">
                       Payment window completed. You can verify now.
                     </p>
                   )}
@@ -352,7 +352,7 @@ const Payment = () => {
                   <Button
                     onClick={handleOpenCashfree}
                     disabled={openingCashfree || !activePayment.paymentSessionId || needsSignIn}
-                    className="flex-1 bg-[#8B5E3C] hover:bg-[#5C4033]"
+                    className="flex-1 bg-[#955F3B] hover:bg-[#7a4d30]"
                   >
                     {openingCashfree ? 'Opening Cashfree...' : 'Pay with Cashfree'}
                   </Button>

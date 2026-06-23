@@ -18,6 +18,10 @@ import EventDetail from '@/features/events/pages/EventDetail';
 import FavoriteEvents from '@/features/events/pages/FavoriteEvents';
 import CartPage from '@/features/events/pages/CartPage';
 import MyTicketsPage from '@/features/tickets/pages/MyTicketsPage';
+import PassPage from '@/features/tickets/pages/PassPage';
+import VenuesPage from '@/features/venues/pages/VenuesPage';
+import SingersPage from '@/features/singers/pages/SingersPage';
+import VipPage from '@/features/vip/pages/VipPage';
 import ProfilePage from '@/features/auth/pages/ProfilePage';
 import ContactUsPage from '@/features/contact/pages/ContactUsPage';
 import Auth from '@/features/auth/pages/Auth';
@@ -35,6 +39,10 @@ export const AppRoutes = () => {
             <Route path={ROUTES.EVENT_DETAIL} element={<EventDetail />} />
             <Route path={ROUTES.FAVORITE_EVENTS} element={<FavoriteEvents />} />
             <Route path={ROUTES.CART} element={<CartPage />} />
+            <Route path={ROUTES.PASSES} element={<PassPage />} />
+            <Route path={ROUTES.VENUES} element={<VenuesPage />} />
+            <Route path={ROUTES.SINGERS} element={<SingersPage />} />
+            <Route path={ROUTES.VIP} element={<VipPage />} />
             <Route path={ROUTES.MY_TICKETS} element={<MyTicketsPage />} />
             <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
             <Route path={ROUTES.CONTACT} element={<ContactUsPage />} />

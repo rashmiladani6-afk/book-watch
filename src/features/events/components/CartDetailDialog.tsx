@@ -63,7 +63,7 @@ const CartDetailDialog = ({
             className="h-44 w-full rounded-xl object-cover"
           />
         ) : (
-          <div className="flex h-44 w-full items-center justify-center rounded-xl bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] text-4xl font-bold text-white">
+          <div className="flex h-44 w-full items-center justify-center rounded-xl bg-gradient-to-br from-[#955F3B] to-[#7a4d30] text-4xl font-bold text-white">
             {event.name.charAt(0)}
           </div>
         )}

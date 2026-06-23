@@ -226,7 +226,7 @@ const MyTicketsPage = () => {
                     {imageUrl ? (
                       <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#8B5E3C] to-[#6D4C3B] text-3xl font-bold text-white">
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#955F3B] to-[#7a4d30] text-3xl font-bold text-white">
                         {title.charAt(0)}
                       </div>
                     )}
