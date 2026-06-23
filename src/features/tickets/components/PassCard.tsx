@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { Star, Ticket } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { brand } from "@/shared/constants/theme";
-import { generateRoute } from "@/shared/constants/routes";
+import { generateRoute, ROUTES } from "@/shared/constants/routes";
+import { cn } from "@/lib/utils";
 import type { CatalogPass } from "@/features/events/utils/eventCatalogMappers";
 
 interface PassCardProps {
@@ -10,39 +11,43 @@ interface PassCardProps {
 }
 
 const PassCard = ({ pass }: PassCardProps) => {
-  const Icon = pass.iconType === "star" ? Star : Ticket;
+  const isGold = pass.category === "Gold";
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
-      <div className="relative h-36 bg-gray-100">
-        <img src={pass.image} alt={pass.title} className="h-full w-full object-cover" />
-        <div className="absolute top-3 left-3 rounded-lg bg-white/90 p-1.5">
-          <Icon className="h-5 w-5" style={{ color: brand.primary }} strokeWidth={1.75} />
-        </div>
-      </div>
+    <article className="flex flex-col rounded-xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      {isGold ? (
+        <Star className="mb-4 h-5 w-5 text-blue-500" strokeWidth={1.75} fill="currentColor" />
+      ) : (
+        <Ticket
+          className={cn("mb-4 h-5 w-5 -rotate-45 text-blue-500")}
+          strokeWidth={1.75}
+          fill="currentColor"
+        />
+      )}
 
-      <div className="flex flex-1 flex-col p-5">
-        <h3 className="text-base font-semibold leading-snug text-gray-900 line-clamp-2 mb-2">
-          {pass.title}
-        </h3>
+      <h3 className="mb-2 text-base font-semibold leading-snug text-gray-900 line-clamp-2">
+        {pass.title}
+      </h3>
 
-        <p className="text-sm text-gray-500 mb-4">
-          Category: {pass.category}. Date: {pass.date}
-        </p>
+      <p className="mb-4 text-sm text-gray-500">
+        Category: {pass.category}. Date: {pass.date}
+      </p>
 
-        <p className="text-lg font-bold mb-5" style={{ color: brand.primary }}>
-          {pass.price ? `Rs. ${pass.price}` : "See details"}
-        </p>
+      <p className="mb-5 text-lg font-bold" style={{ color: brand.primary }}>
+        {pass.price ? `Rs. ${pass.price}` : "See details"}
+      </p>
 
-        <Link to={generateRoute.eventDetail(pass.eventId)} className="mt-auto">
-          <Button
-            className="w-full text-white hover:opacity-90"
-            style={{ backgroundColor: brand.primary }}
-          >
-            Book now
-          </Button>
-        </Link>
-      </div>
+      <Link
+        to={pass.eventId ? generateRoute.eventDetail(pass.eventId) : ROUTES.EVENTS_LIST}
+        className="mt-auto"
+      >
+        <Button
+          className="w-full text-white hover:opacity-90"
+          style={{ backgroundColor: brand.primary }}
+        >
+          Book now
+        </Button>
+      </Link>
     </article>
   );
 };

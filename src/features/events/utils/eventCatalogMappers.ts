@@ -34,16 +34,24 @@ export interface CatalogVenue {
   eventId: number;
 }
 
+export type PassCategory = "Gold" | "General";
+
 export interface CatalogPass {
   id: string;
   title: string;
-  category: string;
+  category: PassCategory;
   date: string;
   price: number;
   iconType: "ticket" | "star";
-  image: string;
   eventId: number;
 }
+
+const getPassCategory = (event: PopularEvent): PassCategory => {
+  const status = event.status?.trim().toLowerCase();
+  if (status === "gold") return "Gold";
+  if (status === "general") return "General";
+  return event.price >= 200 ? "Gold" : "General";
+};
 
 export interface CatalogSinger {
   id: string;
@@ -82,23 +90,34 @@ export const mapEventsToVenues = (events: PopularEvent[]): CatalogVenue[] => {
   }, []);
 };
 
-export const mapEventsToPasses = (events: PopularEvent[]): CatalogPass[] =>
-  eventsWithImages(events).map((event) => {
-    const image = getEventImageUrl(event)!;
-    const category =
-      event.status && event.status !== "draft" ? event.status : event.rating >= 4 ? "Gold" : "General";
+export const mapEventsToPasses = (events: PopularEvent[]): CatalogPass[] => {
+  const mapped = events.map((event) => {
+    const category = getPassCategory(event);
 
     return {
       id: `pass-${event.id}`,
       title: `${event.name} - Registration for ${event.name}`,
-      category: category.charAt(0).toUpperCase() + category.slice(1),
+      category,
       date: formatCatalogDate(event.start_date),
       price: event.price,
-      iconType: event.rating > 0 ? "star" : "ticket",
-      image,
+      iconType: category === "Gold" ? "star" : "ticket",
       eventId: event.id,
-    };
+    } satisfies CatalogPass;
   });
+
+  const sheriEvent = events.find((event) => /sheri garba/i.test(event.name));
+  const featuredGeneralPass: CatalogPass = {
+    id: "pass-featured-sheri-garba",
+    title: "Sheri Garba - Registration for Sheri Garba",
+    category: "General",
+    date: sheriEvent ? formatCatalogDate(sheriEvent.start_date) : "07 Jun 2026",
+    price: 100,
+    iconType: "ticket",
+    eventId: sheriEvent?.id ?? events[0]?.id ?? 0,
+  };
+
+  return [featuredGeneralPass, ...mapped];
+};
 
 export const mapEventsToSingers = (events: PopularEvent[]): CatalogSinger[] => {
   const seen = new Set<string>();
