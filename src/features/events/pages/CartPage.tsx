@@ -1,16 +1,29 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
 import { Button } from "@/shared/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useCart, CART_QUERY_KEY } from "@/features/events/hooks/useCart";
+import { useEventTickets } from "@/features/events/hooks/useEventTickets";
 import { cartService } from "@/features/events/services/cartService";
 import CartDetailDialog from "@/features/events/components/CartDetailDialog";
-import EventTicketsPanel from "@/features/events/components/EventTicketsPanel";
-import OrderSummaryPanel from "@/features/events/components/OrderSummaryPanel";
+import TicketTypePickerDialog from "@/features/events/components/TicketTypePickerDialog";
+import TicketPurchaseDetailDialog from "@/features/events/components/TicketPurchaseDetailDialog";
+import type { EventTicketOption } from "@/features/events/types/eventTickets";
+import { mapCartTicketToEventTicket } from "@/features/events/types/eventTickets";
 import { ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { toast } from "sonner";
@@ -22,6 +35,8 @@ import {
   Ticket,
   ArrowRight,
 } from "lucide-react";
+
+type CartTicketFlowStep = "closed" | "eventDetail" | "typePicker" | "ticketDetail";
 
 const getEventImageUrl = (image: string | null | undefined) => {
   if (!image) return null;
@@ -52,33 +67,62 @@ const CartPage = () => {
     !!user && !!session?.access_token && !authLoading,
   );
   const [isRemoving, setIsRemoving] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [ticketQuantities, setTicketQuantities] = useState<Record<number, number>>({});
-  const [activeTicketId, setActiveTicketId] = useState<number | null>(null);
-  const cartTickets = data?.fullDetail?.tickets ?? [];
+  const [flowStep, setFlowStep] = useState<CartTicketFlowStep>("closed");
+  const [selectedTicket, setSelectedTicket] = useState<EventTicketOption | null>(null);
 
-  useEffect(() => {
-    if (cartTickets.length === 0) {
-      setActiveTicketId(null);
-      return;
-    }
+  const fullDetail = data?.fullDetail ?? { event: null, tickets: [] };
+  const cartTickets = fullDetail.tickets ?? [];
+  const eventId = fullDetail.event?.id;
+  const needsTicketFallback = cartTickets.length === 0;
+  const pickerOrDetailOpen = flowStep === "typePicker" || flowStep === "ticketDetail";
 
-    if (!activeTicketId || !cartTickets.some((ticket) => ticket.id === activeTicketId)) {
-      setActiveTicketId(cartTickets[0].id);
+  const {
+    tickets: fallbackTickets,
+    isLoading: ticketsLoading,
+    error: ticketsError,
+    replaceRequired,
+    forceLoadTickets,
+    isForceLoading,
+    refetch: refetchTickets,
+  } = useEventTickets(
+    eventId,
+    undefined,
+    session?.access_token,
+    pickerOrDetailOpen && needsTicketFallback,
+  );
+
+  const displayTickets = useMemo(() => {
+    if (cartTickets.length > 0) {
+      return cartTickets.map(mapCartTicketToEventTicket);
     }
-  }, [cartTickets, activeTicketId]);
+    return fallbackTickets;
+  }, [cartTickets, fallbackTickets]);
+
+  const closeFlow = () => {
+    setFlowStep("closed");
+    setSelectedTicket(null);
+  };
 
   const handleRemoveCart = async () => {
     setIsRemoving(true);
     try {
       await cartService.removeCart(session?.access_token);
       await queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
-      setDetailOpen(false);
+      closeFlow();
       toast.success("Cart cleared successfully");
     } catch {
       toast.error("Could not remove cart. Please try again.");
     } finally {
       setIsRemoving(false);
+    }
+  };
+
+  const handleConfirmReplaceCart = async () => {
+    try {
+      await forceLoadTickets();
+      await refetch();
+    } catch {
+      // Error surfaced via tickets query state
     }
   };
 
@@ -118,13 +162,7 @@ const CartPage = () => {
   }
 
   const items = data?.items ?? [];
-  const fullDetail = data?.fullDetail ?? { event: null, tickets: [] };
   const hasCart = items.length > 0 || Boolean(fullDetail.event);
-  const activeTicket =
-    fullDetail.tickets.find((ticket) => ticket.id === activeTicketId) ??
-    fullDetail.tickets[0] ??
-    null;
-  const activeQty = activeTicket ? ticketQuantities[activeTicket.id] ?? 1 : 1;
 
   return (
     <PageShell>
@@ -174,132 +212,150 @@ const CartPage = () => {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-4">
-              {items.map((item) => {
-                const eventId = item.event_id ?? item.id;
-                const name = item.event_name ?? item.name ?? fullDetail.event?.name ?? "Event";
-                const imageUrl = getEventImageUrl(
-                  item.event_image ?? item.image ?? fullDetail.event?.image,
-                );
+          <div className="mx-auto max-w-2xl space-y-4">
+            {items.map((item) => {
+              const itemEventId = item.event_id ?? item.id;
+              const name = item.event_name ?? item.name ?? fullDetail.event?.name ?? "Event";
+              const imageUrl = getEventImageUrl(
+                item.event_image ?? item.image ?? fullDetail.event?.image,
+              );
 
-                return (
-                  <article
-                    key={`${item.id}-${eventId}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setDetailOpen(true)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setDetailOpen(true);
-                      }
-                    }}
-                    className="flex cursor-pointer flex-col sm:flex-row gap-4 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <div className="h-36 w-full sm:h-32 sm:w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
-                      {imageUrl ? (
-                        <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#955F3B] to-[#7a4d30] text-2xl font-bold text-white">
-                          {name.charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-1 flex-col min-w-0">
-                      <h2 className="font-semibold text-lg line-clamp-2">{name}</h2>
-                      {(item.start_date || fullDetail.event?.start_date) && (
-                        <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4 shrink-0" />
-                          {formatEventDate(item.start_date ?? fullDetail.event?.start_date ?? "")}
-                        </p>
-                      )}
-                      {(item.address || fullDetail.event?.address) && (
-                        <p className="mt-1 flex items-start gap-2 text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
-                          <span className="line-clamp-2">
-                            {item.address ?? fullDetail.event?.address}
-                          </span>
-                        </p>
-                      )}
-                      <div className="mt-auto pt-3 flex items-center justify-between gap-3">
-                        <p className="flex items-center gap-1.5 text-sm font-semibold">
-                          <Ticket className="h-4 w-4 text-primary" />
-                          {fullDetail.tickets.length > 0
-                            ? `${fullDetail.tickets.length} ticket type(s)`
-                            : `₹${item.sub_total ?? item.price ?? fullDetail.event?.price ?? 0}`}
-                        </p>
-                        <span className="text-xs font-medium text-primary">View details</span>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-
-            <aside className="space-y-4">
-              {fullDetail.event && fullDetail.tickets.length > 0 && (
-                <EventTicketsPanel
-                  eventId={fullDetail.event.id}
-                  eventName={fullDetail.event.name}
-                  tickets={fullDetail.tickets}
-                  userToken={session?.access_token}
-                  title="Buy tickets"
-                  className="rounded-2xl border bg-card p-4 shadow-sm"
-                  quantities={ticketQuantities}
-                  onQuantitiesChange={(ticketId, qty) =>
-                    setTicketQuantities((prev) => ({ ...prev, [ticketId]: qty }))
-                  }
-                  activeTicketId={activeTicketId}
-                  onActiveTicketChange={setActiveTicketId}
-                />
-              )}
-
-              {fullDetail.event && fullDetail.tickets.length === 0 && (
-                <div className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground shadow-sm space-y-3">
-                  <p>Ticket options did not load. Refresh to fetch full cart details from the server.</p>
-                  <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-                    {isFetching ? "Refreshing..." : "Refresh cart"}
-                  </Button>
-                </div>
-              )}
-
-              {fullDetail.event && activeTicket && (
-                <OrderSummaryPanel
-                  eventId={fullDetail.event.id}
-                  ticketId={activeTicket.id}
-                  qty={activeQty}
-                  userToken={session?.access_token}
-                  ticketLabel={activeTicket.type}
-                />
-              )}
-
-              <div className="rounded-2xl border bg-card p-6 h-fit space-y-4 shadow-sm">
-                <Button className="w-full" variant="outline" onClick={() => setDetailOpen(true)}>
-                  View cart details
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={handleRemoveCart}
-                  disabled={isRemoving}
+              return (
+                <article
+                  key={`${item.id}-${itemEventId}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setFlowStep("eventDetail")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setFlowStep("eventDetail");
+                    }
+                  }}
+                  className="flex cursor-pointer flex-col sm:flex-row gap-4 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {isRemoving ? "Removing..." : "Remove from cart"}
-                </Button>
-              </div>
-            </aside>
+                  <div className="h-36 w-full sm:h-32 sm:w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#955F3B] to-[#7a4d30] text-2xl font-bold text-white">
+                        {name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col min-w-0">
+                    <h2 className="font-semibold text-lg line-clamp-2">{name}</h2>
+                    {(item.start_date || fullDetail.event?.start_date) && (
+                      <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4 shrink-0" />
+                        {formatEventDate(item.start_date ?? fullDetail.event?.start_date ?? "")}
+                      </p>
+                    )}
+                    {(item.address || fullDetail.event?.address) && (
+                      <p className="mt-1 flex items-start gap-2 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">
+                          {item.address ?? fullDetail.event?.address}
+                        </span>
+                      </p>
+                    )}
+                    <div className="mt-auto pt-3 flex items-center justify-between gap-3">
+                      <p className="flex items-center gap-1.5 text-sm font-semibold text-[#955F3B]">
+                        <Ticket className="h-4 w-4" />
+                        {displayTickets.length > 0
+                          ? `${displayTickets.length} ticket type(s)`
+                          : `₹${item.sub_total ?? item.price ?? fullDetail.event?.price ?? 0}`}
+                      </p>
+                      <span className="text-xs font-medium text-[#955F3B]">View details</span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                className="flex-1 bg-[#955F3B] hover:bg-[#7a4d30]"
+                onClick={() => setFlowStep("typePicker")}
+              >
+                <Ticket className="mr-2 h-4 w-4" />
+                Buy tickets
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={handleRemoveCart}
+                disabled={isRemoving}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {isRemoving ? "Removing..." : "Remove from cart"}
+              </Button>
+            </div>
           </div>
         )}
       </div>
 
       <CartDetailDialog
         event={fullDetail.event}
-        tickets={fullDetail.tickets}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        userToken={session?.access_token}
+        open={flowStep === "eventDetail"}
+        onOpenChange={(open) => {
+          if (!open) closeFlow();
+        }}
+        ticketCount={displayTickets.length}
+        onBuyTickets={() => setFlowStep("typePicker")}
       />
+
+      <TicketTypePickerDialog
+        open={flowStep === "typePicker" && !replaceRequired}
+        onOpenChange={(open) => {
+          if (!open) closeFlow();
+        }}
+        eventName={fullDetail.event?.name}
+        tickets={displayTickets}
+        isLoading={needsTicketFallback && ticketsLoading}
+        error={ticketsError}
+        onRetry={() => {
+          void refetchTickets();
+          void refetch();
+        }}
+        onSelectTicket={(ticket) => {
+          setSelectedTicket(ticket);
+          setFlowStep("ticketDetail");
+        }}
+      />
+
+      <TicketPurchaseDetailDialog
+        open={flowStep === "ticketDetail"}
+        onOpenChange={(open) => {
+          if (!open) closeFlow();
+        }}
+        event={fullDetail.event!}
+        ticket={selectedTicket}
+        userToken={session?.access_token}
+        onBack={() => setFlowStep("typePicker")}
+      />
+
+      <AlertDialog
+        open={replaceRequired && pickerOrDetailOpen}
+        onOpenChange={(open) => {
+          if (!open) closeFlow();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace cart event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your cart already has a different event. Replace it to load ticket options.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={closeFlow}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReplaceCart} disabled={isForceLoading}>
+              {isForceLoading ? "Replacing..." : "Replace event"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   );
 };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
 import { Button } from "@/shared/components/ui/button";
@@ -18,8 +18,6 @@ import { useEvent } from "@/features/events/hooks/useEvent";
 import { useAddToCart } from "@/features/events/hooks/useAddToCart";
 import EventLikeButton from "@/features/events/components/EventLikeButton";
 import EventRatingForm from "@/features/events/components/EventRatingForm";
-import EventTicketsPanel from "@/features/events/components/EventTicketsPanel";
-import { useCart } from "@/features/events/hooks/useCart";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
@@ -77,6 +75,12 @@ const EventDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, session, loading: authLoading } = useAuth();
+  const { data: event, isLoading, error, refetch, isFetching } = useEvent(
+    id,
+    session?.access_token ?? null,
+    true,
+  );
+  const isSignedIn = !!user && !!session?.access_token;
   const {
     addToCart,
     confirmReplace,
@@ -90,21 +94,6 @@ const EventDetail = () => {
     },
     onError: (message) => toast.error(message),
   });
-  const { data: event, isLoading, error, refetch, isFetching } = useEvent(
-    id,
-    session?.access_token,
-    !authLoading,
-  );
-  const isSignedIn = !!user && !!session?.access_token;
-  const { data: cartData } = useCart(
-    session?.access_token,
-    !authLoading && !!session?.access_token,
-  );
-  const cartEvent = cartData?.fullDetail?.event;
-  const cartTickets =
-    cartEvent && event && cartEvent.id === event.id
-      ? cartData?.fullDetail?.tickets ?? []
-      : [];
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const handleAddToCart = () => {
@@ -322,8 +311,8 @@ const EventDetail = () => {
                     {isSignedIn
                       ? isAdding
                         ? "Adding..."
-                        : "Add to Cart"
-                      : "Book tickets"}
+                        : "Add to cart"
+                      : "Add to cart"}
                   </Button>
                 </div>
               </div>
@@ -355,34 +344,6 @@ const EventDetail = () => {
               <strong className="text-gray-900">Booked:</strong> {event.booked_tickets ?? 0} tickets
             </span>
           </div>
-
-          {isSignedIn ? (
-            cartTickets.length > 0 ? (
-              <div className="mt-8">
-                <EventTicketsPanel
-                  eventId={event.id}
-                  eventName={event.name}
-                  tickets={cartTickets}
-                  userToken={session?.access_token}
-                  title="Buy tickets"
-                  className="rounded-xl border bg-white p-4 sm:p-6"
-                />
-              </div>
-            ) : (
-              <div className="mt-8 rounded-xl border border-dashed bg-white p-4 sm:p-6 text-sm text-muted-foreground">
-                Add this event to your cart to see ticket types and buy tickets.
-              </div>
-            )
-          ) : (
-            <div className="mt-8 rounded-xl border bg-white p-4 sm:p-6 text-center space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Sign in to add this event to your cart, choose tickets, and complete payment.
-              </p>
-              <Button onClick={() => navigate(getAuthUrl(location.pathname))}>
-                Book tickets
-              </Button>
-            </div>
-          )}
 
           {isSignedIn ? (
             <div className="mt-8">

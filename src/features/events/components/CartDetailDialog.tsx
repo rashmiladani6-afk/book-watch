@@ -1,4 +1,4 @@
-import type { CartEventDetail, CartTicketDetail } from "@/features/events/services/cartService";
+import type { CartEventDetail } from "@/features/events/services/cartService";
 import {
   Dialog,
   DialogContent,
@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Badge } from "@/shared/components/ui/badge";
-import EventTicketsPanel from "@/features/events/components/EventTicketsPanel";
+import { Button } from "@/shared/components/ui/button";
 import { Calendar, Heart, MapPin, Star, Ticket, Users } from "lucide-react";
 
 const getEventImageUrl = (image: string | null | undefined) => {
@@ -30,18 +30,18 @@ const formatEventDate = (dateStr: string) => {
 
 interface CartDetailDialogProps {
   event: CartEventDetail | null;
-  tickets: CartTicketDetail[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  userToken?: string | null;
+  ticketCount?: number;
+  onBuyTickets?: () => void;
 }
 
 const CartDetailDialog = ({
   event,
-  tickets,
   open,
   onOpenChange,
-  userToken,
+  ticketCount = 0,
+  onBuyTickets,
 }: CartDetailDialogProps) => {
   if (!event) return null;
 
@@ -125,12 +125,24 @@ const CartDetailDialog = ({
           </div>
         </div>
 
-        <EventTicketsPanel
-          eventId={event.id}
-          eventName={event.name}
-          tickets={tickets}
-          userToken={userToken}
-        />
+        {ticketCount > 0 && (
+          <p className="text-sm text-muted-foreground">
+            {ticketCount} ticket type(s) available
+          </p>
+        )}
+
+        {onBuyTickets && (
+          <Button
+            className="w-full bg-[#955F3B] hover:bg-[#7a4d30]"
+            onClick={() => {
+              onOpenChange(false);
+              onBuyTickets();
+            }}
+          >
+            <Ticket className="mr-2 h-4 w-4" />
+            Buy tickets
+          </Button>
+        )}
       </DialogContent>
     </Dialog>
   );

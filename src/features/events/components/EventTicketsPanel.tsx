@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { toast } from "sonner";
 import type { CartTicketDetail } from "@/features/events/services/cartService";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -8,11 +7,8 @@ import { Minus, Plus, Ticket } from "lucide-react";
 import { useOrderSummary } from "@/features/events/hooks/useOrderSummary";
 import OrderSummaryPanel from "@/features/events/components/OrderSummaryPanel";
 import { useCreateOrder } from "@/features/payment/hooks/useCheckout";
-import { paymentService } from "@/features/payment/services/paymentService";
-import { ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
-import type { EventPaymentState } from "@/features/payment/types/payment";
-import { savePendingEventPayment } from "@/features/payment/utils/paymentStorage";
+import { executeTicketCheckout } from "@/features/events/utils/ticketCheckout";
 
 const formatEventDate = (dateStr: string) => {
   if (!dateStr) return "—";
@@ -220,57 +216,19 @@ const EventTicketsPanel = ({
     qty: number,
     summaryResult: ReturnType<typeof useOrderSummary>["data"],
   ) => {
-    if (!userToken) {
-      toast.error("Sign in to continue to payment");
-      navigate(getAuthUrl(`${location.pathname}${location.search}`));
-      return;
-    }
-
     setCheckingOutTicketId(ticket.id);
     try {
-      const gatewayResult = await paymentService.getPaymentGateway(userToken);
-      const gateway = gatewayResult.status === "success" ? gatewayResult.data : null;
-      if (!gateway?.id) {
-        toast.error(gatewayResult.message || "Payment gateway is unavailable");
-        return;
-      }
-
-      const orderResult = await createOrder.mutateAsync({
+      await executeTicketCheckout({
+        userToken,
         eventId,
-        ticketId: ticket.id,
+        eventName,
+        ticket,
         qty,
-        paymentProviderId: gateway.id,
+        summaryResult,
+        createOrder: createOrder.mutateAsync,
+        navigate,
+        onUnauthorized: () => navigate(getAuthUrl(`${location.pathname}${location.search}`)),
       });
-
-      if (orderResult.status !== "success" || !orderResult.data?.order_id) {
-        toast.error(orderResult.message || "Could not create order");
-        return;
-      }
-
-      const summary =
-        summaryResult?.status === "success" ? summaryResult.data ?? null : null;
-
-      const paymentState: EventPaymentState = {
-        type: "event",
-        eventId,
-        eventName: eventName ?? summary?.event_name ?? "Event",
-        ticketId: ticket.id,
-        ticketType: ticket.type,
-        qty,
-        orderId: orderResult.data.order_id,
-        paymentProviderId: gateway.id,
-        paymentProviderName: gateway.name,
-        paymentSessionId: orderResult.data.payment_session_id,
-        gatewayState: gateway.state,
-        summary,
-      };
-
-      savePendingEventPayment(paymentState);
-      navigate(ROUTES.PAYMENT, { state: paymentState });
-    } catch (err: unknown) {
-      const message =
-        (err as { message?: string })?.message || "Checkout failed. Please try again.";
-      toast.error(message);
     } finally {
       setCheckingOutTicketId(null);
     }

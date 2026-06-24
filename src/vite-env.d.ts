@@ -11,6 +11,7 @@ interface ImportMetaEnv {
   readonly VITE_GARBATOWN_GUEST_USER_TOKEN?: string;
   readonly VITE_GARBATOWN_BROWSE_EMAIL?: string;
   readonly VITE_GARBATOWN_BROWSE_PASSWORD?: string;
+  readonly VITE_GARBATOWN_ALLOW_GUEST_FALLBACK?: string;
   readonly VITE_GARBATOWN_POPULAR_EVENTS_URL?: string;
   readonly VITE_GARBATOWN_EVENT_DETAILS_URL?: string;
   readonly VITE_GARBATOWN_EVENT_LIKE_URL?: string;

@@ -9,7 +9,7 @@ import EventTrendCard, {
 } from "@/features/events/components/EventTrendCard";
 import { Button } from "@/shared/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { usePopularEvents } from "@/features/events/hooks/usePopularEvents";
+import { useHomePopularEvents } from "@/features/events/hooks/usePopularEvents";
 import { useNearbyEvents } from "@/features/location/hooks/useNearbyEvents";
 import { useSavedLocation } from "@/features/location/hooks/useSavedLocation";
 import type { PopularEvent } from "@/features/events/services/eventService";
@@ -27,29 +27,47 @@ const sortByRatingThenEntries = (events: PopularEvent[]) =>
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { user, session, loading: authLoading } = useAuth();
+  const { user, session } = useAuth();
   const { location: savedLocation, hasCoords: hasSavedCoords } = useSavedLocation();
+  const useNearbyOnHome = Boolean(user && hasSavedCoords);
 
   const {
     data: popularEventsData,
     isLoading: popularEventsLoading,
     isError: popularEventsError,
-  } = usePopularEvents(session?.access_token, !authLoading && !hasSavedCoords);
+    error: popularEventsErrorDetails,
+    refetch: refetchPopularEvents,
+    isFetching: isRefetchingPopularEvents,
+  } = useHomePopularEvents(session?.access_token, true);
 
   const {
     data: nearbyEventsData,
     isLoading: nearbyEventsLoading,
     isError: nearbyEventsError,
+    refetch: refetchNearbyEvents,
+    isFetching: isRefetchingNearbyEvents,
   } = useNearbyEvents(
-    session?.access_token,
+    session?.access_token ?? null,
     savedLocation?.latitude,
     savedLocation?.longitude,
-    !authLoading && hasSavedCoords,
+    useNearbyOnHome,
   );
 
-  const activeEventsData = hasSavedCoords ? nearbyEventsData : popularEventsData;
-  const eventsLoading = hasSavedCoords ? nearbyEventsLoading : popularEventsLoading;
-  const eventsError = hasSavedCoords ? nearbyEventsError : popularEventsError;
+  const nearbyFailed = useNearbyOnHome && nearbyEventsError && !nearbyEventsLoading;
+  const useNearbyData = useNearbyOnHome && !nearbyFailed && Boolean(nearbyEventsData);
+
+  const activeEventsData = useNearbyData ? nearbyEventsData : popularEventsData;
+  const eventsLoading = useNearbyData
+    ? nearbyEventsLoading
+    : popularEventsLoading || (useNearbyOnHome && nearbyEventsLoading);
+  const eventsError =
+    !useNearbyData && popularEventsError && !popularEventsLoading && !eventsLoading;
+  const eventsErrorMessage =
+    popularEventsErrorDetails instanceof Error
+      ? popularEventsErrorDetails.message
+      : "Could not load events right now.";
+  const refetchEvents = useNearbyData ? refetchNearbyEvents : refetchPopularEvents;
+  const isRefetchingEvents = useNearbyData ? isRefetchingNearbyEvents : isRefetchingPopularEvents;
   const popularEvents = activeEventsData?.data ?? [];
 
   const filteredEvents = useMemo(() => {
@@ -153,14 +171,42 @@ const Home = () => {
                 ))}
 
               {!showPopularEventsLoading && eventsError && (
-                <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm text-red-600 space-y-3">
-                  <p>Could not load events right now.</p>
+                <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm space-y-3">
+                  <p className="text-red-600 font-medium">{eventsErrorMessage}</p>
                   {!user && (
-                    <Link to={getAuthUrl(ROUTES.HOME)}>
-                      <Button size="sm" variant="outline">
-                        Sign in
-                      </Button>
-                    </Link>
+                    <>
+                      <p className="text-gray-600">
+                        Guest events need a valid browse token in <code>.env</code>. Set
+                        {" "}<code>VITE_GARBATOWN_GUEST_USER_TOKEN</code> from Postman login,
+                        or fix <code>VITE_GARBATOWN_BROWSE_PASSWORD</code>, then restart
+                        {" "}<code>npm run dev</code>.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Link to={getAuthUrl(ROUTES.HOME)}>
+                          <Button size="sm" style={{ backgroundColor: brand.primary }} className="text-white">
+                            Sign in to view events
+                          </Button>
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => refetchEvents()}
+                          disabled={isRefetchingEvents}
+                        >
+                          Try again
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                  {user && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => refetchEvents()}
+                      disabled={isRefetchingEvents}
+                    >
+                      Try again
+                    </Button>
                   )}
                 </div>
               )}

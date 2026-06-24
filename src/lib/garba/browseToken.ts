@@ -1,4 +1,5 @@
 import { extractAuthUser, authService } from "@/features/auth/services/authService";
+import { extractGarbaApiMessage } from "@/lib/garba/apiAuth";
 import { normalizeUserToken } from "@/lib/garba/apiAuth";
 
 const GUEST_BROWSE_USER_TOKEN =
@@ -8,11 +9,24 @@ const BROWSE_EMAIL = import.meta.env.VITE_GARBATOWN_BROWSE_EMAIL?.trim() ?? "";
 const BROWSE_PASSWORD = import.meta.env.VITE_GARBATOWN_BROWSE_PASSWORD?.trim() ?? "";
 
 let cachedBrowseToken: string | null = GUEST_BROWSE_USER_TOKEN || null;
-let browseLoginPromise: Promise<string | null> | null = null;
+let browseLoginPromise: Promise<string> | null = null;
 
-const loginBrowseAccount = async (): Promise<string | null> => {
+export class GuestBrowseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GuestBrowseError";
+  }
+}
+
+const loginBrowseAccount = async (): Promise<string> => {
+  if (GUEST_BROWSE_USER_TOKEN) {
+    return GUEST_BROWSE_USER_TOKEN;
+  }
+
   if (!BROWSE_EMAIL || !BROWSE_PASSWORD) {
-    return null;
+    throw new GuestBrowseError(
+      "Guest browse is not configured. Add VITE_GARBATOWN_GUEST_USER_TOKEN or browse email/password to .env, then restart the dev server.",
+    );
   }
 
   try {
@@ -22,19 +36,33 @@ const loginBrowseAccount = async (): Promise<string | null> => {
       password: BROWSE_PASSWORD,
     });
 
-    const authUser = extractAuthUser(response.data);
+    if (response.status && response.status !== "success") {
+      throw new GuestBrowseError(response.message || "Guest browse login failed.");
+    }
+
+    const authUser = extractAuthUser(response);
     const token =
       authUser?.user_token ?? authUser?.token ?? authUser?.access_token ?? null;
 
-    if (token) {
-      cachedBrowseToken = token.replace(/^Bearer\s+/i, "");
-      return cachedBrowseToken;
+    if (!token) {
+      throw new GuestBrowseError("Guest browse login succeeded but no user token was returned.");
     }
-  } catch {
-    return null;
-  }
 
-  return null;
+    cachedBrowseToken = token.replace(/^Bearer\s+/i, "");
+    return cachedBrowseToken;
+  } catch (error) {
+    if (error instanceof GuestBrowseError) {
+      throw error;
+    }
+
+    const message =
+      extractGarbaApiMessage(error) ??
+      (error as Error)?.message ??
+      "Guest browse login failed.";
+
+    console.error("Browse account login failed:", message);
+    throw new GuestBrowseError(message);
+  }
 };
 
 /**
@@ -44,8 +72,12 @@ const loginBrowseAccount = async (): Promise<string | null> => {
  */
 export const ensureBrowseUserToken = async (
   userToken?: string | null,
-): Promise<string | null> => {
-  const signedInToken = normalizeUserToken(userToken);
+  options?: { skipStoredToken?: boolean },
+): Promise<string> => {
+  const signedInToken = options?.skipStoredToken
+    ? (userToken ?? "").trim().replace(/^Bearer\s+/i, "")
+    : normalizeUserToken(userToken);
+
   if (signedInToken) {
     return signedInToken;
   }

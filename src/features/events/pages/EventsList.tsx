@@ -11,19 +11,12 @@ import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { brand } from "@/shared/constants/theme";
 
 const EventsList = () => {
-  const { user, session, loading: authLoading } = useAuth();
-  const { data, isLoading, error } = usePopularEvents(session?.access_token, !authLoading);
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-white">
-        <Header />
-        <div className="container py-10">
-          <p className="text-center text-muted-foreground">Loading events...</p>
-        </div>
-      </div>
-    );
-  }
+  const { user, session } = useAuth();
+  const { data, isLoading, error, refetch, isFetching } = usePopularEvents(
+    session?.access_token ?? null,
+    true,
+    { allowGuestBrowse: true },
+  );
 
   if (isLoading) {
     return (
@@ -37,17 +30,36 @@ const EventsList = () => {
   }
 
   if (error || !data) {
+    const message = error instanceof Error ? error.message : "Unable to load events.";
     return (
       <div className="min-h-screen bg-white">
         <Header />
-        <div className="container py-10 text-center space-y-4">
-          <p className="text-destructive">Unable to load events. Please try again later.</p>
+        <div className="container py-10 text-center space-y-4 max-w-xl mx-auto">
+          <h1 className="text-2xl font-bold" style={{ color: brand.text }}>
+            Trending Events
+          </h1>
+          <p className="text-destructive">{message}</p>
           {!user && (
-            <Link to={getAuthUrl(ROUTES.EVENTS)}>
-              <Button variant="outline">Sign in</Button>
-            </Link>
+            <p className="text-sm text-muted-foreground">
+              Guest events use browse credentials from <code>.env</code>. Set
+              {" "}<code>VITE_GARBATOWN_GUEST_USER_TOKEN</code> or fix the browse password,
+              then restart <code>npm run dev</code>.
+            </p>
           )}
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+              Try again
+            </Button>
+            {!user && (
+              <Link to={getAuthUrl(ROUTES.EVENTS_LIST)}>
+                <Button style={{ backgroundColor: brand.primary }} className="text-white">
+                  Sign in
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
+        <Footer />
       </div>
     );
   }

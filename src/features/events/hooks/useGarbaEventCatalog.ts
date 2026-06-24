@@ -9,10 +9,11 @@ import {
 } from "@/features/events/utils/eventCatalogMappers";
 
 export const useGarbaEventCatalog = () => {
-  const { session, loading: authLoading } = useAuth();
+  const { session } = useAuth();
   const { data, isLoading, isError, refetch, isFetching } = usePopularEvents(
-    session?.access_token,
-    !authLoading,
+    session?.access_token ?? null,
+    true,
+    { allowGuestBrowse: true },
   );
 
   const events = data?.data ?? [];
@@ -29,7 +30,7 @@ export const useGarbaEventCatalog = () => {
 
   return {
     ...catalog,
-    isLoading: authLoading || isLoading,
+    isLoading,
     isError,
     isFetching,
     refetch,

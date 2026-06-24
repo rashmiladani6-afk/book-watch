@@ -1,7 +1,15 @@
 import axios from "axios";
 import type { EventsMeta } from "@/shared/types/api";
-import { extractGarbaApiMessage } from "@/lib/garba/apiAuth";
-import { ensureBrowseUserToken } from "@/lib/garba/browseToken";
+import { extractGarbaApiMessage, normalizeUserToken, buildGarbaAuthHeaderVariants } from "@/lib/garba/apiAuth";
+import { ensureBrowseUserToken, GuestBrowseError } from "@/lib/garba/browseToken";
+import type { EventTicketOption } from "@/features/events/types/eventTickets";
+import { parseEventTicketsFromPayload } from "@/features/events/types/eventTickets";
+import {
+  buildGuestFallbackEventsResponse,
+  isGuestFallbackEnabled,
+} from "@/features/events/data/guestFallbackEvents";
+
+export type { EventTicketOption };
 
 const GARBA_PROXY_BASE = "/garba-auth";
 
@@ -67,6 +75,7 @@ export interface PopularEvent {
     mimetype?: string;
     url?: string;
   }>;
+  tickets?: EventTicketOption[];
 }
 
 export interface PopularEventsResponse {
@@ -94,6 +103,10 @@ export interface AddRatingResponse {
   status: string;
   message?: string;
   data?: unknown;
+}
+
+export interface PopularEventsOptions {
+  allowGuestBrowse?: boolean;
 }
 
 const buildPopularEventsHeaderVariants = (userToken?: string | null): Record<string, string>[] => {
@@ -153,16 +166,61 @@ const prioritizeUrls = (urls: string[], preferred: string | null) => {
   return unique;
 };
 
-const fetchPopularEvents = async (userToken?: string | null): Promise<PopularEventsResponse> => {
-  const resolvedToken = await ensureBrowseUserToken(userToken);
+const GUEST_POPULAR_EVENTS_URL = "/api/guest/popular-events";
+
+const tryGuestFallbackEvents = (isGuestRequest: boolean) => {
+  if (!isGuestRequest || !isGuestFallbackEnabled()) return null;
+  return buildGuestFallbackEventsResponse();
+};
+
+const fetchPopularEvents = async (
+  userToken?: string | null,
+  options: PopularEventsOptions = {},
+): Promise<PopularEventsResponse> => {
+  const { allowGuestBrowse = true } = options;
+  const isGuestRequest = allowGuestBrowse && !userToken;
+
+  if (isGuestRequest && import.meta.env.DEV) {
+    try {
+      const response = await axios.get<PopularEventsResponse>(GUEST_POPULAR_EVENTS_URL, {
+        timeout: 20000,
+      });
+      if (response.data?.status !== "error") {
+        return response.data;
+      }
+    } catch {
+      const fallback = tryGuestFallbackEvents(isGuestRequest);
+      if (fallback) return fallback;
+    }
+  }
+
+  let resolvedToken: string | null = null;
+  try {
+    resolvedToken = allowGuestBrowse
+      ? await ensureBrowseUserToken(userToken, { skipStoredToken: !userToken })
+      : normalizeUserToken(userToken);
+  } catch (error) {
+    const fallback = tryGuestFallbackEvents(isGuestRequest);
+    if (fallback) return fallback;
+    throw error;
+  }
+
   if (!resolvedToken) {
-    throw new Error("Sign in to view events.");
+    const fallback = tryGuestFallbackEvents(isGuestRequest);
+    if (fallback) return fallback;
+    throw new GuestBrowseError("Sign in to view events.");
   }
 
   const headerVariants = prioritizeHeaders(
-    buildPopularEventsHeaderVariants(resolvedToken),
+    buildGarbaAuthHeaderVariants(resolvedToken),
     resolvedPopularHeader,
   );
+
+  if (headerVariants.length === 0) {
+    const fallback = tryGuestFallbackEvents(isGuestRequest);
+    if (fallback) return fallback;
+    throw new Error("Sign in to view events.");
+  }
 
   let lastError: unknown = null;
   const candidateUrls = prioritizeUrls(POPULAR_EVENTS_URLS, resolvedPopularEventsUrl);
@@ -188,6 +246,9 @@ const fetchPopularEvents = async (userToken?: string | null): Promise<PopularEve
       }
     }
   }
+
+  const fallback = tryGuestFallbackEvents(isGuestRequest);
+  if (fallback) return fallback;
 
   throw lastError;
 };
@@ -310,6 +371,7 @@ const normalizeEventDetails = (input: unknown, fallbackId: number): PopularEvent
     image: toString(item.image) || null,
   }));
   const fallbackImage = attachments.find((item) => item.url)?.url ?? null;
+  const tickets = parseEventTicketsFromPayload(payload);
 
   return {
     id,
@@ -335,6 +397,7 @@ const normalizeEventDetails = (input: unknown, fallbackId: number): PopularEvent
     attachments,
     is_like: typeof payload.is_like === "boolean" ? payload.is_like : undefined,
     isFav: typeof payload.isFav === "boolean" ? payload.isFav : undefined,
+    tickets: tickets.length > 0 ? tickets : undefined,
   };
 };
 
@@ -342,13 +405,13 @@ const fetchEventDetails = async (
   id: number | string,
   userToken?: string | null,
 ): Promise<PopularEvent | undefined> => {
-  const resolvedToken = await ensureBrowseUserToken(userToken);
+  const resolvedToken = await ensureBrowseUserToken(userToken, { skipStoredToken: !userToken });
   if (!resolvedToken) {
     throw new Error("Sign in to view event details.");
   }
 
   const headerVariants = prioritizeHeaders(
-    buildPopularEventsHeaderVariants(resolvedToken),
+    buildGarbaAuthHeaderVariants(resolvedToken),
     resolvedEventDetailsHeader ?? resolvedPopularHeader,
   );
 
@@ -504,8 +567,11 @@ const addEventRatingApi = async (
 };
 
 export const eventService = {
-  async getPopularEvents(userToken?: string | null): Promise<PopularEventsResponse> {
-    return fetchPopularEvents(userToken);
+  async getPopularEvents(
+    userToken?: string | null,
+    options?: PopularEventsOptions,
+  ): Promise<PopularEventsResponse> {
+    return fetchPopularEvents(userToken, options);
   },
 
   async getFavoriteEvents(userToken?: string | null): Promise<PopularEventsResponse> {

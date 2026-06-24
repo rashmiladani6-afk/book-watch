@@ -101,13 +101,17 @@ const withFcmToken = async (fcmToken?: string | null) => {
 };
 
 export const extractAuthUser = (data: unknown): AuthUser | null => {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
     return null;
   }
 
-  const user = data as AuthUser;
-  if (user.user_token || user.token || user.access_token) {
-    return user;
+  const payload = data as AuthUser & { data?: unknown };
+  if (payload.user_token || payload.token || payload.access_token) {
+    return payload;
+  }
+
+  if (payload.data) {
+    return extractAuthUser(payload.data);
   }
 
   return null;
