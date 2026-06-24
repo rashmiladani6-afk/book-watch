@@ -1,27 +1,26 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
 import { Button } from "@/shared/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/components/ui/alert-dialog";
-import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Share2, ShoppingCart, Star, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Share2, Ticket, Star, X } from "lucide-react";
 import { useEvent } from "@/features/events/hooks/useEvent";
-import { useAddToCart } from "@/features/events/hooks/useAddToCart";
+import { useEventTickets } from "@/features/events/hooks/useEventTickets";
+import { useLocalCart } from "@/features/events/hooks/useLocalCart";
+import { CART_QUERY_KEY } from "@/features/events/hooks/useCart";
+import { cartService } from "@/features/events/services/cartService";
 import EventLikeButton from "@/features/events/components/EventLikeButton";
 import EventRatingForm from "@/features/events/components/EventRatingForm";
+import TicketTypePickerDialog from "@/features/events/components/TicketTypePickerDialog";
+import type { EventTicketOption } from "@/features/events/types/eventTickets";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
+import { buildCartTicketNavigationState } from "@/features/events/utils/ticketCheckout";
 import { toast } from "sonner";
+
+type TicketFlowStep = "closed" | "typePicker";
 
 const getEventImageUrl = (image: string | null | undefined) => {
   if (!image) return null;
@@ -74,6 +73,8 @@ const EventDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
+  const { addTicket: addToLocalCart } = useLocalCart();
   const { user, session, loading: authLoading } = useAuth();
   const { data: event, isLoading, error, refetch, isFetching } = useEvent(
     id,
@@ -81,28 +82,76 @@ const EventDetail = () => {
     true,
   );
   const isSignedIn = !!user && !!session?.access_token;
-  const {
-    addToCart,
-    confirmReplace,
-    cancelReplace,
-    replaceEventId,
-    isAdding,
-  } = useAddToCart(session?.access_token, {
-    onAdded: () => {
-      toast.success("Event added to cart");
-      navigate(ROUTES.CART);
-    },
-    onError: (message) => toast.error(message),
-  });
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [flowStep, setFlowStep] = useState<TicketFlowStep>("closed");
 
-  const handleAddToCart = () => {
+  const pickerOpen = flowStep === "typePicker";
+  const eventTickets = event?.tickets;
+  const needsTicketFallback = !(eventTickets?.length);
+
+  const {
+    tickets: fallbackTickets,
+    isLoading: ticketsLoading,
+    error: ticketsError,
+    refetch: refetchTickets,
+  } = useEventTickets(
+    event?.id,
+    eventTickets,
+    session?.access_token,
+    pickerOpen && needsTicketFallback && isSignedIn,
+  );
+
+  const displayTickets = useMemo(() => {
+    if (eventTickets?.length) return eventTickets;
+    return fallbackTickets;
+  }, [eventTickets, fallbackTickets]);
+
+  const closeTicketFlow = () => {
+    setFlowStep("closed");
+  };
+
+  const handleSelectTicket = async (ticket: EventTicketOption) => {
+    if (!event?.id || !session?.access_token) return;
+
+    closeTicketFlow();
+
+    const cartEvent = {
+      id: event.id,
+      name: event.name,
+      start_date: event.start_date,
+      end_date: event.end_date,
+      price: event.price,
+      image: event.image ?? null,
+      address: event.address,
+      organizer: event.organizer,
+    };
+
+    try {
+      const result = await cartService.addToCart(event.id, session.access_token);
+      if (result.popup) {
+        addToLocalCart(cartEvent, displayTickets, ticket, 1);
+        toast.success("Event added to cart");
+      } else {
+        await queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
+      }
+    } catch {
+      addToLocalCart(cartEvent, displayTickets, ticket, 1);
+      toast.success("Event added to cart");
+    }
+
+    navigate(ROUTES.CART, {
+      state: buildCartTicketNavigationState(ticket, event, displayTickets),
+    });
+  };
+
+  const handleBuyTicket = () => {
     if (!isSignedIn) {
+      toast.info("Sign in to buy tickets");
       navigate(getAuthUrl(location.pathname));
       return;
     }
     if (!event?.id) return;
-    addToCart(event.id);
+    setFlowStep("typePicker");
   };
 
   if (authLoading) {
@@ -304,15 +353,10 @@ const EventDetail = () => {
                 <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-start">
                   <Button
                     className="w-full rounded-xl bg-red-600 px-8 py-4 text-lg font-bold text-white shadow-2xl transition-all hover:bg-red-700 hover:shadow-red-600/50 sm:w-auto sm:py-5 sm:px-12"
-                    onClick={handleAddToCart}
-                    disabled={isSignedIn && isAdding}
+                    onClick={handleBuyTicket}
                   >
-                    <ShoppingCart className="mr-2 h-5 w-5" />
-                    {isSignedIn
-                      ? isAdding
-                        ? "Adding..."
-                        : "Add to cart"
-                      : "Add to cart"}
+                    <Ticket className="mr-2 h-5 w-5" />
+                    Buy Ticket
                   </Button>
                 </div>
               </div>
@@ -485,27 +529,22 @@ const EventDetail = () => {
         </div>
       )}
 
-      <AlertDialog
-        open={replaceEventId != null}
+      <TicketTypePickerDialog
+        open={flowStep === "typePicker"}
         onOpenChange={(open) => {
-          if (!open) cancelReplace();
+          if (!open) closeTicketFlow();
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Replace cart event?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your cart already has an event. Replace it with this one to continue.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelReplace}>Keep current</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmReplace} disabled={isAdding}>
-              {isAdding ? "Replacing..." : "Replace event"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        eventName={event.name}
+        tickets={displayTickets}
+        isLoading={needsTicketFallback && ticketsLoading}
+        error={ticketsError}
+        onRetry={() => {
+          void refetchTickets();
+        }}
+        onSelectTicket={(ticket) => {
+          void handleSelectTicket(ticket);
+        }}
+      />
 
       <Footer />
     </div>

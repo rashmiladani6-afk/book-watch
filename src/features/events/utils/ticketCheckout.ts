@@ -6,6 +6,38 @@ import type { CreateOrderRequest } from "@/features/payment/services/paymentServ
 import { ROUTES } from "@/shared/constants/routes";
 import type { EventPaymentState } from "@/features/payment/types/payment";
 import { savePendingEventPayment } from "@/features/payment/utils/paymentStorage";
+import type { EventTicketOption } from "@/features/events/types/eventTickets";
+import type { CartEventDetail } from "@/features/events/services/cartService";
+
+export interface CartTicketNavigationState {
+  selectedTicketId: number;
+  ticket?: EventTicketOption;
+  event?: CartEventDetail;
+  tickets?: EventTicketOption[];
+}
+
+export const buildCartTicketNavigationState = (
+  ticket: EventTicketOption,
+  event: Pick<
+    CartEventDetail,
+    "id" | "name" | "start_date" | "end_date" | "price" | "image" | "address" | "organizer"
+  >,
+  tickets: EventTicketOption[],
+): CartTicketNavigationState => ({
+  selectedTicketId: ticket.id,
+  ticket,
+  event: {
+    id: event.id,
+    name: event.name,
+    start_date: event.start_date,
+    end_date: event.end_date,
+    price: event.price,
+    image: event.image ?? null,
+    address: event.address,
+    organizer: event.organizer,
+  },
+  tickets,
+});
 
 interface CreateOrderResult {
   status: string;

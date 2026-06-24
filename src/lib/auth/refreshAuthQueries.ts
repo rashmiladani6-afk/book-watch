@@ -1,5 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { CART_QUERY_KEY } from "@/features/events/hooks/useCart";
+import { LOCAL_CART_QUERY_KEY } from "@/features/events/hooks/useLocalCart";
+import { clearLocalCartEntries } from "@/features/events/utils/localCartStore";
 import { EVENT_DETAILS_QUERY_KEY } from "@/features/events/hooks/useEvent";
 import { FAVORITE_EVENTS_QUERY_KEY } from "@/features/events/hooks/useFavoriteEvents";
 import { POPULAR_EVENTS_QUERY_KEY } from "@/features/events/hooks/usePopularEvents";
@@ -22,7 +24,9 @@ export const refreshAuthQueries = async (queryClient: QueryClient) => {
 };
 
 export const clearAuthQueries = (queryClient: QueryClient) => {
+  clearLocalCartEntries();
   queryClient.removeQueries({ queryKey: CART_QUERY_KEY });
+  queryClient.removeQueries({ queryKey: LOCAL_CART_QUERY_KEY });
   queryClient.removeQueries({ queryKey: POPULAR_EVENTS_QUERY_KEY });
   queryClient.removeQueries({ queryKey: FAVORITE_EVENTS_QUERY_KEY });
   queryClient.removeQueries({ queryKey: EVENT_DETAILS_QUERY_KEY });

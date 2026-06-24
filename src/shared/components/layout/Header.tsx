@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, User, LogOut, MapPin, X, ArrowLeft, ShoppingCart } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -15,6 +15,7 @@ import { useAuthActions } from "@/features/auth/hooks/useAuthActions";
 import { extractAuthUser } from "@/features/auth/services/authService";
 import { AUTH_MODAL_EVENT } from "@/features/auth/components/AuthModalOpener";
 import { useCart } from "@/features/events/hooks/useCart";
+import { useLocalCart } from "@/features/events/hooks/useLocalCart";
 import { getCityCoordinates } from "@/features/location/constants/cityCoordinates";
 import { useUpdateLocation } from "@/features/location/hooks/useUpdateLocation";
 import {
@@ -80,7 +81,13 @@ const Header = ({ onSearch }: HeaderProps) => {
     session?.access_token,
     !authLoading && !!session?.access_token,
   );
-  const cartItemCount = (cartData?.items?.length ?? 0) > 0 || cartData?.fullDetail?.event ? 1 : 0;
+  const { entries: localCartEntries } = useLocalCart();
+  const cartItemCount = useMemo(() => {
+    const apiEventId = cartData?.fullDetail?.event?.id;
+    const apiCount = apiEventId ? 1 : 0;
+    const extraLocal = localCartEntries.filter((entry) => entry.event.id !== apiEventId).length;
+    return apiCount + extraLocal;
+  }, [cartData?.fullDetail?.event?.id, localCartEntries]);
 
   // OTP timer
   useEffect(() => {

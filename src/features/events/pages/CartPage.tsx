@@ -1,54 +1,31 @@
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
 import { Button } from "@/shared/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/components/ui/alert-dialog";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useCart, CART_QUERY_KEY } from "@/features/events/hooks/useCart";
-import { useEventTickets } from "@/features/events/hooks/useEventTickets";
+import { useEvent } from "@/features/events/hooks/useEvent";
+import { useLocalCart } from "@/features/events/hooks/useLocalCart";
 import { cartService } from "@/features/events/services/cartService";
-import CartDetailDialog from "@/features/events/components/CartDetailDialog";
+import CartEventDetailCard from "@/features/events/components/CartEventDetailCard";
 import TicketTypePickerDialog from "@/features/events/components/TicketTypePickerDialog";
-import TicketPurchaseDetailDialog from "@/features/events/components/TicketPurchaseDetailDialog";
+import type { CartEventDetail } from "@/features/events/services/cartService";
 import type { EventTicketOption } from "@/features/events/types/eventTickets";
-import { mapCartTicketToEventTicket } from "@/features/events/types/eventTickets";
 import { ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
+import { eventTicketToCartTicket, mapCartTicketToEventTicket } from "@/features/events/types/eventTickets";
+import { executeTicketCheckout, type CartTicketNavigationState } from "@/features/events/utils/ticketCheckout";
+import { useCreateOrder } from "@/features/payment/hooks/useCheckout";
 import { toast } from "sonner";
-import {
-  Calendar,
-  MapPin,
-  ShoppingCart,
-  Trash2,
-  Ticket,
-  ArrowRight,
-} from "lucide-react";
-
-type CartTicketFlowStep = "closed" | "eventDetail" | "typePicker" | "ticketDetail";
+import { ShoppingCart, Ticket, ArrowRight } from "lucide-react";
 
 const getEventImageUrl = (image: string | null | undefined) => {
   if (!image) return null;
   if (image.startsWith("http://") || image.startsWith("https://")) return image;
   return `/garba-auth${image.startsWith("/") ? image : `/${image}`}`;
-};
-
-const formatEventDate = (dateStr: string) => {
-  if (!dateStr) return "";
-  const date = new Date(dateStr.replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return dateStr;
-  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
 const PageShell = ({ children }: { children: ReactNode }) => (
@@ -61,69 +38,219 @@ const PageShell = ({ children }: { children: ReactNode }) => (
 
 const CartPage = () => {
   const { user, session, loading: authLoading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data, isLoading, error, refetch, isFetching } = useCart(
+  const createOrder = useCreateOrder(session?.access_token);
+  const initialNavState = location.state as CartTicketNavigationState | null;
+  const pendingTicketNavRef = useRef<CartTicketNavigationState | null>(
+    initialNavState?.selectedTicketId ? initialNavState : null,
+  );
+
+  const { data, isLoading, error } = useCart(
     session?.access_token,
     !!user && !!session?.access_token && !authLoading,
   );
-  const [isRemoving, setIsRemoving] = useState(false);
-  const [flowStep, setFlowStep] = useState<CartTicketFlowStep>("closed");
-  const [selectedTicket, setSelectedTicket] = useState<EventTicketOption | null>(null);
+  const { entries: localEntries, removeEvent, setQuantity, clearAll, addTicket } = useLocalCart();
 
-  const fullDetail = data?.fullDetail ?? { event: null, tickets: [] };
-  const cartTickets = fullDetail.tickets ?? [];
-  const eventId = fullDetail.event?.id;
-  const needsTicketFallback = cartTickets.length === 0;
-  const pickerOrDetailOpen = flowStep === "typePicker" || flowStep === "ticketDetail";
+  const [apiQuantities, setApiQuantities] = useState<Record<number, number>>(() => {
+    if (!initialNavState?.selectedTicketId) return {};
+    return { [initialNavState.selectedTicketId]: 1 };
+  });
+  const [navTickets, setNavTickets] = useState<EventTicketOption[]>(initialNavState?.tickets ?? []);
+  const [checkingOutEventId, setCheckingOutEventId] = useState<number | null>(null);
+  const [removingEventId, setRemovingEventId] = useState<number | null>(null);
+  const [pickerEventId, setPickerEventId] = useState<number | null>(null);
 
-  const {
-    tickets: fallbackTickets,
-    isLoading: ticketsLoading,
-    error: ticketsError,
-    replaceRequired,
-    forceLoadTickets,
-    isForceLoading,
-    refetch: refetchTickets,
-  } = useEventTickets(
-    eventId,
-    undefined,
+  const apiEvent = data?.fullDetail?.event ?? null;
+  const { data: apiEventDetails } = useEvent(
+    apiEvent ? String(apiEvent.id) : undefined,
     session?.access_token,
-    pickerOrDetailOpen && needsTicketFallback,
+    !!apiEvent,
+  );
+  const apiCartTickets = useMemo(
+    () => (data?.fullDetail?.tickets ?? []).map(mapCartTicketToEventTicket),
+    [data?.fullDetail?.tickets],
+  );
+  const apiDisplayTickets = useMemo(() => {
+    if (apiEventDetails?.tickets?.length) return apiEventDetails.tickets;
+    if (apiCartTickets.length > 0) return apiCartTickets;
+    return navTickets;
+  }, [apiEventDetails?.tickets, apiCartTickets, navTickets]);
+
+  const { data: pickerEventDetails, isLoading: pickerEventLoading } = useEvent(
+    pickerEventId ? String(pickerEventId) : undefined,
+    session?.access_token,
+    pickerEventId != null,
   );
 
-  const displayTickets = useMemo(() => {
-    if (cartTickets.length > 0) {
-      return cartTickets.map(mapCartTicketToEventTicket);
-    }
-    return fallbackTickets;
-  }, [cartTickets, fallbackTickets]);
+  const extraLocalEntries = useMemo(
+    () => localEntries.filter((entry) => entry.event.id !== apiEvent?.id),
+    [localEntries, apiEvent?.id],
+  );
 
-  const closeFlow = () => {
-    setFlowStep("closed");
-    setSelectedTicket(null);
+  const hasCart =
+    Boolean(apiEvent) || extraLocalEntries.length > 0 || Boolean(initialNavState?.event);
+
+  const pickerEntry = useMemo(() => {
+    if (!pickerEventId) return null;
+    if (apiEvent?.id === pickerEventId) {
+      return { event: apiEvent, tickets: apiDisplayTickets };
+    }
+    const local = localEntries.find((entry) => entry.event.id === pickerEventId);
+    return local ? { event: local.event, tickets: local.tickets } : null;
+  }, [pickerEventId, apiEvent, apiDisplayTickets, localEntries]);
+
+  const pickerTickets = useMemo(() => {
+    if (pickerEventDetails?.tickets?.length) return pickerEventDetails.tickets;
+    return pickerEntry?.tickets ?? [];
+  }, [pickerEventDetails?.tickets, pickerEntry?.tickets]);
+
+  const applyNavToApiCart = useCallback(
+    (navState: CartTicketNavigationState) => {
+      if (!navState.selectedTicketId) return false;
+      if (apiEvent && navState.event && apiEvent.id !== navState.event.id) return false;
+      if (navState.tickets?.length) setNavTickets(navState.tickets);
+      setApiQuantities((prev) => ({
+        ...prev,
+        [navState.selectedTicketId]: Math.max(1, prev[navState.selectedTicketId] ?? 0),
+      }));
+      return true;
+    },
+    [apiEvent],
+  );
+
+  useEffect(() => {
+    const navState = location.state as CartTicketNavigationState | null;
+    if (!navState?.selectedTicketId) return;
+
+    pendingTicketNavRef.current = navState;
+    if (navState.tickets?.length) setNavTickets(navState.tickets);
+    setApiQuantities((prev) => ({
+      ...prev,
+      [navState.selectedTicketId]: Math.max(1, prev[navState.selectedTicketId] ?? 0),
+    }));
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    const navState = pendingTicketNavRef.current;
+    if (!navState?.selectedTicketId || authLoading || isLoading) return;
+    applyNavToApiCart(navState);
+    pendingTicketNavRef.current = null;
+  }, [authLoading, isLoading, applyNavToApiCart]);
+
+  useEffect(() => {
+    if (apiCartTickets.length > 0) setNavTickets([]);
+  }, [apiCartTickets.length]);
+
+  const handleApiQtyChange = (ticketId: number, nextQty: number) => {
+    const ticket = apiDisplayTickets.find((t) => t.id === ticketId);
+    const maxQty =
+      ticket?.available_tickets && ticket.available_tickets > 0 ? ticket.available_tickets : 10;
+    const clamped = Math.min(maxQty, Math.max(0, nextQty));
+
+    setApiQuantities((prev) => {
+      if (clamped <= 0) {
+        const { [ticketId]: _removed, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [ticketId]: clamped };
+    });
   };
 
-  const handleRemoveCart = async () => {
-    setIsRemoving(true);
+  const handleLocalQtyChange = (eventId: number, ticketId: number, nextQty: number) => {
+    const entry = localEntries.find((item) => item.event.id === eventId);
+    const ticket = entry?.tickets.find((t) => t.id === ticketId);
+    const maxQty =
+      ticket?.available_tickets && ticket.available_tickets > 0 ? ticket.available_tickets : 10;
+    const clamped = Math.min(maxQty, Math.max(0, nextQty));
+    setQuantity(eventId, ticketId, clamped);
+  };
+
+  const handleRemoveApiCart = async () => {
+    if (!apiEvent) return;
+    setRemovingEventId(apiEvent.id);
     try {
       await cartService.removeCart(session?.access_token);
       await queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
-      closeFlow();
-      toast.success("Cart cleared successfully");
+      setApiQuantities({});
+      setNavTickets([]);
+      toast.success("Event removed from cart");
     } catch {
-      toast.error("Could not remove cart. Please try again.");
+      toast.error("Could not remove event. Please try again.");
     } finally {
-      setIsRemoving(false);
+      setRemovingEventId(null);
     }
   };
 
-  const handleConfirmReplaceCart = async () => {
-    try {
-      await forceLoadTickets();
-      await refetch();
-    } catch {
-      // Error surfaced via tickets query state
+  const handleRemoveLocalEvent = (eventId: number) => {
+    setRemovingEventId(eventId);
+    removeEvent(eventId);
+    toast.success("Event removed from cart");
+    setRemovingEventId(null);
+  };
+
+  const handleCheckout = async (
+    event: CartEventDetail,
+    tickets: EventTicketOption[],
+    quantities: Record<number, number>,
+  ) => {
+    const selected = tickets.filter((ticket) => (quantities[ticket.id] ?? 0) > 0);
+    if (selected.length === 0) {
+      openTicketTypePicker(event.id);
+      return;
     }
+
+    if (selected.length > 1) {
+      toast.info("Proceeding with the first selected ticket type for this event.");
+    }
+
+    const ticket = selected[0];
+    const qty = quantities[ticket.id] ?? 1;
+
+    setCheckingOutEventId(event.id);
+    try {
+      await executeTicketCheckout({
+        userToken: session?.access_token,
+        eventId: event.id,
+        eventName: event.name,
+        ticket: eventTicketToCartTicket(ticket),
+        qty,
+        createOrder: createOrder.mutateAsync,
+        navigate,
+        onUnauthorized: () => navigate(getAuthUrl(`${location.pathname}${location.search}`)),
+      });
+    } finally {
+      setCheckingOutEventId(null);
+    }
+  };
+
+  const handleSelectTicketType = (ticket: EventTicketOption) => {
+    if (!pickerEventId) return;
+
+    if (apiEvent?.id === pickerEventId) {
+      setApiQuantities((prev) => ({
+        ...prev,
+        [ticket.id]: Math.max(1, prev[ticket.id] ?? 0),
+      }));
+    } else {
+      const entry = localEntries.find((item) => item.event.id === pickerEventId);
+      if (entry) {
+        addTicket(
+          entry.event,
+          pickerTickets,
+          ticket,
+          Math.max(1, entry.quantities[ticket.id] ?? 1),
+        );
+      }
+    }
+
+    setPickerEventId(null);
+  };
+
+  const openTicketTypePicker = (eventId: number) => {
+    setPickerEventId(eventId);
   };
 
   if (authLoading || isLoading) {
@@ -142,7 +269,7 @@ const CartPage = () => {
         <div className="container py-20 text-center max-w-md mx-auto">
           <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-primary" />
           <h1 className="text-2xl font-bold mb-2">Sign in to view cart</h1>
-          <p className="text-muted-foreground mb-6">Your saved event will appear here.</p>
+          <p className="text-muted-foreground mb-6">Your saved events will appear here.</p>
           <Link to={getAuthUrl(ROUTES.CART)}>
             <Button size="lg">Sign in</Button>
           </Link>
@@ -161,8 +288,9 @@ const CartPage = () => {
     );
   }
 
-  const items = data?.items ?? [];
-  const hasCart = items.length > 0 || Boolean(fullDetail.event);
+  const eventCount =
+    (apiEvent ? 1 : 0) +
+    extraLocalEntries.length;
 
   return (
     <PageShell>
@@ -175,7 +303,9 @@ const CartPage = () => {
             <div>
               <h1 className="text-3xl md:text-4xl font-bold">My Cart</h1>
               <p className="text-sm text-white/70 mt-1">
-                {hasCart ? "Tap your event to view full cart details" : "No events in your cart"}
+                {hasCart
+                  ? `${eventCount} event${eventCount > 1 ? "s" : ""} in your cart`
+                  : "No events in your cart"}
               </p>
             </div>
           </div>
@@ -212,150 +342,73 @@ const CartPage = () => {
             </Link>
           </div>
         ) : (
-          <div className="mx-auto max-w-2xl space-y-4">
-            {items.map((item) => {
-              const itemEventId = item.event_id ?? item.id;
-              const name = item.event_name ?? item.name ?? fullDetail.event?.name ?? "Event";
-              const imageUrl = getEventImageUrl(
-                item.event_image ?? item.image ?? fullDetail.event?.image,
-              );
+          <div className="mx-auto max-w-2xl space-y-6">
+            {apiEvent && (
+              <CartEventDetailCard
+                event={apiEvent}
+                imageUrl={getEventImageUrl(apiEvent.image)}
+                tickets={apiDisplayTickets}
+                quantities={apiQuantities}
+                userToken={session?.access_token}
+                isCheckingOut={checkingOutEventId === apiEvent.id}
+                isRemoving={removingEventId === apiEvent.id}
+                onQtyChange={handleApiQtyChange}
+                onBuyTickets={() => {
+                  void handleCheckout(apiEvent, apiDisplayTickets, apiQuantities);
+                }}
+                onRemove={() => {
+                  void handleRemoveApiCart();
+                }}
+                onAddTicketType={() => openTicketTypePicker(apiEvent.id)}
+              />
+            )}
 
-              return (
-                <article
-                  key={`${item.id}-${itemEventId}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setFlowStep("eventDetail")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setFlowStep("eventDetail");
-                    }
+            {extraLocalEntries.map((entry) => (
+              <CartEventDetailCard
+                key={entry.event.id}
+                event={entry.event}
+                imageUrl={getEventImageUrl(entry.event.image)}
+                tickets={entry.tickets}
+                quantities={entry.quantities}
+                userToken={session?.access_token}
+                isCheckingOut={checkingOutEventId === entry.event.id}
+                isRemoving={removingEventId === entry.event.id}
+                onQtyChange={(ticketId, qty) => handleLocalQtyChange(entry.event.id, ticketId, qty)}
+                onBuyTickets={() => {
+                  void handleCheckout(entry.event, entry.tickets, entry.quantities);
+                }}
+                onRemove={() => handleRemoveLocalEvent(entry.event.id)}
+                onAddTicketType={() => openTicketTypePicker(entry.event.id)}
+              />
+            ))}
+
+            {eventCount > 1 && (
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    void handleRemoveApiCart();
+                    clearAll();
                   }}
-                  className="flex cursor-pointer flex-col sm:flex-row gap-4 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <div className="h-36 w-full sm:h-32 sm:w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
-                    {imageUrl ? (
-                      <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#955F3B] to-[#7a4d30] text-2xl font-bold text-white">
-                        {name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-1 flex-col min-w-0">
-                    <h2 className="font-semibold text-lg line-clamp-2">{name}</h2>
-                    {(item.start_date || fullDetail.event?.start_date) && (
-                      <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4 shrink-0" />
-                        {formatEventDate(item.start_date ?? fullDetail.event?.start_date ?? "")}
-                      </p>
-                    )}
-                    {(item.address || fullDetail.event?.address) && (
-                      <p className="mt-1 flex items-start gap-2 text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
-                        <span className="line-clamp-2">
-                          {item.address ?? fullDetail.event?.address}
-                        </span>
-                      </p>
-                    )}
-                    <div className="mt-auto pt-3 flex items-center justify-between gap-3">
-                      <p className="flex items-center gap-1.5 text-sm font-semibold text-[#955F3B]">
-                        <Ticket className="h-4 w-4" />
-                        {displayTickets.length > 0
-                          ? `${displayTickets.length} ticket type(s)`
-                          : `₹${item.sub_total ?? item.price ?? fullDetail.event?.price ?? 0}`}
-                      </p>
-                      <span className="text-xs font-medium text-[#955F3B]">View details</span>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                className="flex-1 bg-[#955F3B] hover:bg-[#7a4d30]"
-                onClick={() => setFlowStep("typePicker")}
-              >
-                <Ticket className="mr-2 h-4 w-4" />
-                Buy tickets
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={handleRemoveCart}
-                disabled={isRemoving}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {isRemoving ? "Removing..." : "Remove from cart"}
-              </Button>
-            </div>
+                  Clear all events
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      <CartDetailDialog
-        event={fullDetail.event}
-        open={flowStep === "eventDetail"}
-        onOpenChange={(open) => {
-          if (!open) closeFlow();
-        }}
-        ticketCount={displayTickets.length}
-        onBuyTickets={() => setFlowStep("typePicker")}
-      />
-
       <TicketTypePickerDialog
-        open={flowStep === "typePicker" && !replaceRequired}
+        open={pickerEventId != null}
         onOpenChange={(open) => {
-          if (!open) closeFlow();
+          if (!open) setPickerEventId(null);
         }}
-        eventName={fullDetail.event?.name}
-        tickets={displayTickets}
-        isLoading={needsTicketFallback && ticketsLoading}
-        error={ticketsError}
-        onRetry={() => {
-          void refetchTickets();
-          void refetch();
-        }}
-        onSelectTicket={(ticket) => {
-          setSelectedTicket(ticket);
-          setFlowStep("ticketDetail");
-        }}
+        eventName={pickerEntry?.event.name ?? pickerEventDetails?.name}
+        tickets={pickerTickets}
+        isLoading={pickerEventLoading}
+        onSelectTicket={handleSelectTicketType}
       />
-
-      <TicketPurchaseDetailDialog
-        open={flowStep === "ticketDetail"}
-        onOpenChange={(open) => {
-          if (!open) closeFlow();
-        }}
-        event={fullDetail.event!}
-        ticket={selectedTicket}
-        userToken={session?.access_token}
-        onBack={() => setFlowStep("typePicker")}
-      />
-
-      <AlertDialog
-        open={replaceRequired && pickerOrDetailOpen}
-        onOpenChange={(open) => {
-          if (!open) closeFlow();
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Replace cart event?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your cart already has a different event. Replace it to load ticket options.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeFlow}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmReplaceCart} disabled={isForceLoading}>
-              {isForceLoading ? "Replacing..." : "Replace event"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </PageShell>
   );
 };
