@@ -1,6 +1,11 @@
 export const GARBA_API_BEARER =
   import.meta.env.VITE_GARBATOWN_API_BEARER ?? "Bearer 2ubGisLUnejgLUandBFhPIEel1W5R55BFsUc";
 
+export const buildGarbaServiceBearerHeaders = (): Record<string, string> => ({
+  Authorization: GARBA_API_BEARER,
+  "Content-Type": "application/json",
+});
+
 export const normalizeUserToken = (userToken?: string | null) => {
   const tokenFromStorage = localStorage.getItem("authToken");
   const token = (userToken ?? tokenFromStorage ?? "").trim();

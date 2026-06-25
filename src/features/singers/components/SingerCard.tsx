@@ -10,11 +10,11 @@ interface SingerCardProps {
 const SingerCard = ({ singer }: SingerCardProps) => {
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
-      <div className="relative h-48 sm:h-56 bg-gray-100">
+      <div className="relative bg-gray-100">
         <img
           src={singer.image}
           alt={singer.name}
-          className="h-full w-full object-cover"
+          className="w-full h-auto max-h-[480px] object-contain object-center"
         />
       </div>
 

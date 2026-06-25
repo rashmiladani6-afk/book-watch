@@ -159,9 +159,7 @@ const Header = ({ onSearch }: HeaderProps) => {
     setSelectedCity(cityLabel);
 
     if (!session?.access_token) {
-      if (options?.requireAuth !== false) {
-        toast.info("Sign in to load nearby events for your city");
-      }
+      toast.success(`Showing events near ${cityLabel}`);
       return;
     }
 

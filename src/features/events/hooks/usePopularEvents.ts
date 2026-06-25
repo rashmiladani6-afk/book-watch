@@ -26,6 +26,6 @@ export const usePopularEvents = (
   });
 };
 
-/** Home page: signed-in users use their token; guests fall back to browse credentials. */
+/** Home page: signed-in users use their token; guests use is_guest_user=true. */
 export const useHomePopularEvents = (userToken?: string | null, enabled = true) =>
   usePopularEvents(userToken ?? null, enabled, { allowGuestBrowse: true });

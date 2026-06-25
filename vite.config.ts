@@ -24,10 +24,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
-import { guestEventsApiPlugin } from './vite-plugins/guestEventsApi';
 
 export default defineConfig({
-  plugins: [react(), guestEventsApiPlugin()],
+  plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

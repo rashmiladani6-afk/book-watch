@@ -1,13 +1,15 @@
 import axios from "axios";
 import type { EventsMeta } from "@/shared/types/api";
 import { extractGarbaApiMessage, normalizeUserToken, buildGarbaAuthHeaderVariants } from "@/lib/garba/apiAuth";
-import { ensureBrowseUserToken, GuestBrowseError } from "@/lib/garba/browseToken";
+import { GuestBrowseError } from "@/lib/garba/browseToken";
+import {
+  buildGuestEventDetailParams,
+  buildPopularGuestEventParams,
+  getWithGuestOrAuthHeaders,
+  isGuestEventUser,
+} from "@/lib/garba/guestEventApi";
 import type { EventTicketOption } from "@/features/events/types/eventTickets";
 import { parseEventTicketsFromPayload } from "@/features/events/types/eventTickets";
-import {
-  buildGuestFallbackEventsResponse,
-  isGuestFallbackEnabled,
-} from "@/features/events/data/guestFallbackEvents";
 
 export type { EventTicketOption };
 
@@ -166,48 +168,61 @@ const prioritizeUrls = (urls: string[], preferred: string | null) => {
   return unique;
 };
 
-const GUEST_POPULAR_EVENTS_URL = "/api/guest/popular-events";
-
-const tryGuestFallbackEvents = (isGuestRequest: boolean) => {
-  if (!isGuestRequest || !isGuestFallbackEnabled()) return null;
-  return buildGuestFallbackEventsResponse();
-};
-
 const fetchPopularEvents = async (
   userToken?: string | null,
   options: PopularEventsOptions = {},
+  retriedAsGuest = false,
 ): Promise<PopularEventsResponse> => {
   const { allowGuestBrowse = true } = options;
-  const isGuestRequest = allowGuestBrowse && !userToken;
+  const guestOptions = { skipStoredToken: !userToken };
+  const isGuestRequest =
+    allowGuestBrowse && isGuestEventUser(userToken, guestOptions);
 
-  if (isGuestRequest && import.meta.env.DEV) {
-    try {
-      const response = await axios.get<PopularEventsResponse>(GUEST_POPULAR_EVENTS_URL, {
-        timeout: 20000,
-      });
-      if (response.data?.status !== "error") {
-        return response.data;
+  if (isGuestRequest) {
+    const params = buildPopularGuestEventParams({ limit: 10, offset: 0 });
+    const candidateUrls = [
+      import.meta.env.VITE_GARBATOWN_POPULAR_EVENTS_URL ??
+        `${GARBA_PROXY_BASE}/api/v1/odoo/popular_events`,
+    ];
+    let lastError: unknown = null;
+
+    for (const url of candidateUrls) {
+      try {
+        const data = await getWithGuestOrAuthHeaders<PopularEventsResponse>(
+          url,
+          null,
+          params,
+          guestOptions,
+        );
+        if (data?.status === "error") {
+          lastError = new Error(data.message || "Could not load events.");
+          continue;
+        }
+        resolvedPopularEventsUrl = url;
+        return data;
+      } catch (error: unknown) {
+        lastError = error;
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 401 || status === 403 || status === 404 || status === 500) {
+          continue;
+        }
+        throw error;
       }
-    } catch {
-      const fallback = tryGuestFallbackEvents(isGuestRequest);
-      if (fallback) return fallback;
     }
+
+    if (allowGuestBrowse && userToken && !retriedAsGuest) {
+      return fetchPopularEvents(null, options, true);
+    }
+
+    const message =
+      extractGarbaApiMessage(lastError) ??
+      (lastError as Error)?.message ??
+      "Could not load events right now.";
+    throw new GuestBrowseError(message);
   }
 
-  let resolvedToken: string | null = null;
-  try {
-    resolvedToken = allowGuestBrowse
-      ? await ensureBrowseUserToken(userToken, { skipStoredToken: !userToken })
-      : normalizeUserToken(userToken);
-  } catch (error) {
-    const fallback = tryGuestFallbackEvents(isGuestRequest);
-    if (fallback) return fallback;
-    throw error;
-  }
-
+  const resolvedToken = normalizeUserToken(userToken);
   if (!resolvedToken) {
-    const fallback = tryGuestFallbackEvents(isGuestRequest);
-    if (fallback) return fallback;
     throw new GuestBrowseError("Sign in to view events.");
   }
 
@@ -217,8 +232,6 @@ const fetchPopularEvents = async (
   );
 
   if (headerVariants.length === 0) {
-    const fallback = tryGuestFallbackEvents(isGuestRequest);
-    if (fallback) return fallback;
     throw new Error("Sign in to view events.");
   }
 
@@ -232,13 +245,16 @@ const fetchPopularEvents = async (
           headers,
           timeout: 15000,
         });
+        if (response.data?.status === "error") {
+          lastError = new Error(response.data.message || "Could not load events.");
+          continue;
+        }
         resolvedPopularEventsUrl = url;
         resolvedPopularHeader = headers;
         return response.data;
       } catch (error: unknown) {
         const status = (error as { response?: { status?: number } })?.response?.status;
         lastError = error;
-        // Try next header or URL on auth / not-found / server errors
         if (status === 401 || status === 403 || status === 404 || status === 500) {
           continue;
         }
@@ -247,8 +263,12 @@ const fetchPopularEvents = async (
     }
   }
 
-  const fallback = tryGuestFallbackEvents(isGuestRequest);
-  if (fallback) return fallback;
+  if (allowGuestBrowse && userToken && !retriedAsGuest) {
+    const status = (lastError as { response?: { status?: number } })?.response?.status;
+    if (status === 401 || status === 403) {
+      return fetchPopularEvents(null, options, true);
+    }
+  }
 
   throw lastError;
 };
@@ -405,20 +425,11 @@ const fetchEventDetails = async (
   id: number | string,
   userToken?: string | null,
 ): Promise<PopularEvent | undefined> => {
-  const resolvedToken = await ensureBrowseUserToken(userToken, { skipStoredToken: !userToken });
-  if (!resolvedToken) {
-    throw new Error("Sign in to view event details.");
-  }
-
-  const headerVariants = prioritizeHeaders(
-    buildGarbaAuthHeaderVariants(resolvedToken),
-    resolvedEventDetailsHeader ?? resolvedPopularHeader,
-  );
-
+  const guestOptions = { skipStoredToken: !userToken };
+  const isGuestRequest = isGuestEventUser(userToken, guestOptions);
   const eventId = Number(id);
-  let lastError: unknown = null;
+
   const normalizeToGarbaProxy = (url: string) => {
-    // Prevent accidental `/api/...` requests going to wrong Vite proxy target.
     if (url.startsWith("/api/")) return `${GARBA_PROXY_BASE}${url}`;
     if (url.startsWith("api/")) return `${GARBA_PROXY_BASE}/${url}`;
     return url;
@@ -441,6 +452,46 @@ const fetchEventDetails = async (
       : null,
   );
 
+  if (isGuestRequest) {
+    const guestParams = buildGuestEventDetailParams();
+    let lastError: unknown = null;
+
+    for (const detailUrl of detailsUrlCandidates) {
+      try {
+        const response = await getWithGuestOrAuthHeaders<EventDetailsResponse>(
+          detailUrl,
+          null,
+          guestParams,
+          guestOptions,
+        );
+        if (detailUrl.includes(String(eventId))) {
+          resolvedEventDetailsUrlTemplate = detailUrl.replace(String(eventId), "{id}");
+        }
+        return normalizeEventDetails(response.data, eventId);
+      } catch (error: unknown) {
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        lastError = error;
+        if (status === 404) break;
+        if (status === 401 || status === 403 || status === 500) continue;
+        throw error;
+      }
+    }
+
+    throw lastError ?? new Error("Could not load event details.");
+  }
+
+  const resolvedToken = normalizeUserToken(userToken);
+  if (!resolvedToken) {
+    throw new Error("Sign in to view event details.");
+  }
+
+  const headerVariants = prioritizeHeaders(
+    buildGarbaAuthHeaderVariants(resolvedToken),
+    resolvedEventDetailsHeader ?? resolvedPopularHeader,
+  );
+
+  let lastError: unknown = null;
+
   for (const detailUrl of detailsUrlCandidates) {
     for (const headers of headerVariants) {
       try {
@@ -457,7 +508,6 @@ const fetchEventDetails = async (
         const status = (error as { response?: { status?: number } })?.response?.status;
         lastError = error;
         if (status === 404) {
-          // Route not found for this URL; skip remaining header variants for same URL.
           break;
         }
         if (status === 401 || status === 403 || status === 500) {
@@ -582,7 +632,7 @@ export const eventService = {
     id: number | string,
     userToken?: string | null,
   ): Promise<PopularEvent | undefined> {
-    const list = await fetchPopularEvents(userToken);
+    const list = await fetchPopularEvents(userToken, { allowGuestBrowse: true });
     return list.data.find((event) => event.id === Number(id));
   },
 
@@ -606,7 +656,7 @@ export const eventService = {
       }
 
       try {
-        const list = await fetchPopularEvents(userToken);
+        const list = await fetchPopularEvents(userToken, { allowGuestBrowse: true });
         const fallback = list.data.find((event) => event.id === Number(id));
         if (fallback) return fallback;
       } catch {

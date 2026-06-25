@@ -53,9 +53,13 @@ const EventTrendCard = ({
   if (variant === "grid") {
     return (
       <div className="overflow-hidden flex flex-col h-full bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
-        <div className="relative">
-          <Link to={generateRoute.eventDetail(event.id)}>
-            <img src={imageUrl} alt={event.name} className="w-full h-48 object-cover" />
+        <div className="relative bg-gray-100">
+          <Link to={generateRoute.eventDetail(event.id)} className="block">
+            <img
+              src={imageUrl}
+              alt={event.name}
+              className="w-full h-auto max-h-[480px] object-contain object-center"
+            />
           </Link>
           <div className="absolute top-2 right-2">
             <EventLikeButton
@@ -110,8 +114,12 @@ const EventTrendCard = ({
       </div>
 
       <Link to={generateRoute.eventDetail(event.id)}>
-        <div className="relative h-[280px] bg-gray-200">
-          <img src={imageUrl} alt={event.name} className="w-full h-full object-cover" />
+        <div className="relative bg-gray-100">
+          <img
+            src={imageUrl}
+            alt={event.name}
+            className="w-full h-auto max-h-[480px] object-contain object-center"
+          />
         </div>
 
         <div className="p-3 space-y-1.5">

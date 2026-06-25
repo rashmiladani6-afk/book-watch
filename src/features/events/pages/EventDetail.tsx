@@ -76,12 +76,12 @@ const EventDetail = () => {
   const queryClient = useQueryClient();
   const { addTicket: addToLocalCart } = useLocalCart();
   const { user, session, loading: authLoading } = useAuth();
+  const isSignedIn = !!user && !!session?.access_token;
   const { data: event, isLoading, error, refetch, isFetching } = useEvent(
     id,
-    session?.access_token ?? null,
-    true,
+    isSignedIn ? session.access_token : null,
+    !authLoading,
   );
-  const isSignedIn = !!user && !!session?.access_token;
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [flowStep, setFlowStep] = useState<TicketFlowStep>("closed");
 

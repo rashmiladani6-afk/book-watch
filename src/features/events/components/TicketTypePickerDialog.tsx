@@ -60,7 +60,8 @@ const TicketTypePickerDialog = ({
         ) : tickets.length === 0 ? (
           <div className="space-y-3 py-6 text-center">
             <p className="text-sm text-muted-foreground">
-              No ticket types are available for this event right now.
+              You can add only one event to your cart at a time. Remove the current event
+              first, then add this event.
             </p>
             {onRetry && (
               <Button variant="outline" size="sm" onClick={onRetry}>

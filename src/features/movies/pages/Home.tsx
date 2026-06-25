@@ -3,72 +3,33 @@ import { Link } from "react-router-dom";
 import Header from "@/shared/components/layout/Header";
 import Footer from "@/shared/components/layout/Footer";
 import TimerCarousel from "@/shared/components/common/TimerCarousel";
-import EventTrendCard, {
-  getEventImageUrl,
-  getEventEntryCount,
-} from "@/features/events/components/EventTrendCard";
+import EventTrendCard, { getEventImageUrl } from "@/features/events/components/EventTrendCard";
 import { Button } from "@/shared/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useHomePopularEvents } from "@/features/events/hooks/usePopularEvents";
-import { useNearbyEvents } from "@/features/location/hooks/useNearbyEvents";
-import { useSavedLocation } from "@/features/location/hooks/useSavedLocation";
-import type { PopularEvent } from "@/features/events/services/eventService";
+import { useTrendingEvents } from "@/features/events/hooks/useTrendingEvents";
+import { sortByRatingThenEntries } from "@/features/events/utils/eventDisplayUtils";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { ROUTES } from "@/shared/constants/routes";
 import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { brand } from "@/shared/constants/theme";
 
-const sortByRatingThenEntries = (events: PopularEvent[]) =>
-  [...events].sort((a, b) => {
-    if (b.rating !== a.rating) return b.rating - a.rating;
-    return getEventEntryCount(b) - getEventEntryCount(a);
-  });
-
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { user, session } = useAuth();
-  const { location: savedLocation, hasCoords: hasSavedCoords } = useSavedLocation();
-  const useNearbyOnHome = Boolean(user && hasSavedCoords);
+  const { user, session, loading: authLoading } = useAuth();
+  const isSignedIn = !!user && !!session?.access_token;
 
   const {
-    data: popularEventsData,
-    isLoading: popularEventsLoading,
-    isError: popularEventsError,
-    error: popularEventsErrorDetails,
-    refetch: refetchPopularEvents,
-    isFetching: isRefetchingPopularEvents,
-  } = useHomePopularEvents(session?.access_token, true);
-
-  const {
-    data: nearbyEventsData,
-    isLoading: nearbyEventsLoading,
-    isError: nearbyEventsError,
-    refetch: refetchNearbyEvents,
-    isFetching: isRefetchingNearbyEvents,
-  } = useNearbyEvents(
-    session?.access_token ?? null,
-    savedLocation?.latitude,
-    savedLocation?.longitude,
-    useNearbyOnHome,
-  );
-
-  const nearbyFailed = useNearbyOnHome && nearbyEventsError && !nearbyEventsLoading;
-  const useNearbyData = useNearbyOnHome && !nearbyFailed && Boolean(nearbyEventsData);
-
-  const activeEventsData = useNearbyData ? nearbyEventsData : popularEventsData;
-  const eventsLoading = useNearbyData
-    ? nearbyEventsLoading
-    : popularEventsLoading || (useNearbyOnHome && nearbyEventsLoading);
-  const eventsError =
-    !useNearbyData && popularEventsError && !popularEventsLoading && !eventsLoading;
-  const eventsErrorMessage =
-    popularEventsErrorDetails instanceof Error
-      ? popularEventsErrorDetails.message
-      : "Could not load events right now.";
-  const refetchEvents = useNearbyData ? refetchNearbyEvents : refetchPopularEvents;
-  const isRefetchingEvents = useNearbyData ? isRefetchingNearbyEvents : isRefetchingPopularEvents;
-  const popularEvents = activeEventsData?.data ?? [];
+    events: popularEvents,
+    isLoading: eventsLoading,
+    isError: eventsError,
+    errorMessage: eventsErrorMessage,
+    refetch: refetchEvents,
+    isFetching: isRefetchingEvents,
+  } = useTrendingEvents(isSignedIn ? session.access_token : null, {
+    includeNearby: true,
+    enabled: !authLoading,
+  });
 
   const filteredEvents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -100,7 +61,7 @@ const Home = () => {
     weeklyEvents.length > 0 ? weeklyEvents : filteredEvents,
   );
   const showPopularEvents = filteredEvents.length > 0;
-  const showPopularEventsLoading = eventsLoading;
+  const showPopularEventsLoading = authLoading || eventsLoading;
 
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;
@@ -151,7 +112,7 @@ const Home = () => {
                     key={`trending-event-skeleton-${index}`}
                     className="flex-none w-[300px] bg-white rounded-lg overflow-hidden shadow-md snap-start animate-pulse"
                   >
-                    <div className="h-[280px] bg-gray-200" />
+                    <div className="h-[320px] bg-gray-100" />
                     <div className="p-3 space-y-2">
                       <div className="h-4 bg-gray-200 rounded w-3/4" />
                       <div className="h-4 bg-gray-200 rounded w-1/3" />
@@ -165,7 +126,7 @@ const Home = () => {
                     key={event.id}
                     event={event}
                     index={index}
-                    userToken={session?.access_token}
+                    userToken={isSignedIn ? session.access_token : undefined}
                     variant="carousel"
                   />
                 ))}
@@ -173,20 +134,13 @@ const Home = () => {
               {!showPopularEventsLoading && eventsError && (
                 <div className="flex-none w-full min-w-[280px] bg-white rounded-lg shadow-md p-6 snap-start text-sm space-y-3">
                   <p className="text-red-600 font-medium">{eventsErrorMessage}</p>
-                  {!user && (
+                  {!isSignedIn && (
                     <>
                       <p className="text-gray-600">
-                        Guest events need a valid browse token in <code>.env</code>. Set
-                        {" "}<code>VITE_GARBATOWN_GUEST_USER_TOKEN</code> from Postman login,
-                        or fix <code>VITE_GARBATOWN_BROWSE_PASSWORD</code>, then restart
-                        {" "}<code>npm run dev</code>.
+                        You can browse events without signing in. Try again, or pick a city for
+                        nearby events.
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        <Link to={getAuthUrl(ROUTES.HOME)}>
-                          <Button size="sm" style={{ backgroundColor: brand.primary }} className="text-white">
-                            Sign in to view events
-                          </Button>
-                        </Link>
                         <Button
                           size="sm"
                           variant="outline"
@@ -195,10 +149,15 @@ const Home = () => {
                         >
                           Try again
                         </Button>
+                        <Link to={getAuthUrl(ROUTES.HOME)}>
+                          <Button size="sm" variant="secondary">
+                            Sign in (optional)
+                          </Button>
+                        </Link>
                       </div>
                     </>
                   )}
-                  {user && (
+                  {isSignedIn && (
                     <Button
                       size="sm"
                       variant="outline"

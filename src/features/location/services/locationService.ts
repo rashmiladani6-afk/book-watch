@@ -1,6 +1,10 @@
 import axios from "axios";
 import { buildGarbaAuthHeaderVariants } from "@/lib/garba/apiAuth";
-import { ensureBrowseUserToken } from "@/lib/garba/browseToken";
+import {
+  buildNearbyGuestEventParams,
+  getWithGuestOrAuthHeaders,
+  isGuestEventUser,
+} from "@/lib/garba/guestEventApi";
 import type { EventsMeta } from "@/shared/types/api";
 import type { PopularEvent } from "@/features/events/services/eventService";
 
@@ -62,36 +66,6 @@ const postWithAuthHeaders = async <T>(
   throw lastError;
 };
 
-const getWithAuthHeaders = async <T>(
-  url: string,
-  userToken: string,
-  params?: Record<string, string>,
-): Promise<T> => {
-  const headerVariants = buildGarbaAuthHeaderVariants(userToken);
-  if (headerVariants.length === 0) {
-    throw new Error("User token is required");
-  }
-
-  let lastError: unknown = null;
-  for (const headers of headerVariants) {
-    try {
-      const response = await axios.get<T>(url, {
-        headers,
-        params,
-        timeout: 15000,
-      });
-      return response.data;
-    } catch (error: unknown) {
-      lastError = error;
-      const status = (error as { response?: { status?: number } })?.response?.status;
-      if (status === 401 || status === 403) continue;
-      throw error;
-    }
-  }
-
-  throw lastError;
-};
-
 export const locationService = {
   updateLocation: async (
     userToken: string,
@@ -108,16 +82,31 @@ export const locationService = {
     latitude?: number,
     longitude?: number,
   ): Promise<NearbyEventsResponse> => {
-    const resolvedToken = await ensureBrowseUserToken(userToken);
-    if (!resolvedToken) {
-      throw new Error("Sign in to view nearby events.");
+    if (latitude == null || longitude == null) {
+      throw new Error("Location is required for nearby events.");
     }
 
-    const params =
-      latitude != null && longitude != null
-        ? { latitude: String(latitude), longitude: String(longitude) }
-        : undefined;
+    const guestOptions = { skipStoredToken: !userToken };
+    const isGuest = isGuestEventUser(userToken, guestOptions);
 
-    return getWithAuthHeaders<NearbyEventsResponse>(NEARBY_EVENTS_URL, resolvedToken, params);
+    const params = isGuest
+      ? buildNearbyGuestEventParams(latitude, longitude, { limit: 10 })
+      : {
+          latitude: String(latitude),
+          longitude: String(longitude),
+        };
+
+    const data = await getWithGuestOrAuthHeaders<NearbyEventsResponse>(
+      NEARBY_EVENTS_URL,
+      userToken ?? null,
+      params,
+      guestOptions,
+    );
+
+    if (data?.status === "error") {
+      throw new Error(data.message || "Could not load nearby events.");
+    }
+
+    return data;
   },
 };

@@ -14,7 +14,7 @@ export const useNearbyEvents = (
   return useQuery({
     queryKey: [
       ...NEARBY_EVENTS_QUERY_KEY,
-      userToken ?? "",
+      userToken ? userToken : "guest",
       hasCoords ? latitude : "saved",
       hasCoords ? longitude : "saved",
     ],
