@@ -1,6 +1,8 @@
 import {
+  getCashfreeModesToTry,
+  isCashfreeSessionInvalidError,
+  isValidPaymentSessionId,
   resolveCashfreeMode,
-  sanitizePaymentSessionId,
 } from "@/features/payment/utils/paymentSession";
 
 const CASHFREE_SDK_URL = "https://sdk.cashfree.com/js/v3/cashfree.js";
@@ -12,7 +14,7 @@ interface CashfreeCheckoutOptions {
 }
 
 interface CashfreeCheckoutResult {
-  error?: { message?: string };
+  error?: { message?: string; code?: string; type?: string };
   redirect?: boolean;
   paymentDetails?: { paymentMessage?: string };
 }
@@ -65,28 +67,52 @@ export const openCashfreeCheckout = async ({
   gatewayState?: string;
   returnUrl?: string;
 }) => {
+  const sessionId = typeof paymentSessionId === "string" ? paymentSessionId.trim() : "";
+
+  if (!sessionId || !isValidPaymentSessionId(sessionId)) {
+    throw new Error("Payment session is missing. Tap Start over and try checkout again.");
+  }
+
   await loadCashfreeScript();
 
   if (!window.Cashfree) {
     throw new Error("Cashfree SDK is not available");
   }
 
-  const cleanedSessionId = sanitizePaymentSessionId(paymentSessionId);
-  if (!cleanedSessionId.startsWith("session_")) {
-    throw new Error("Invalid payment session. Please go back and create the order again.");
+  const modesToTry = getCashfreeModesToTry(gatewayState);
+  console.log("[Cashfree] session_id:", sessionId);
+  console.log("[Cashfree] gatewayState:", gatewayState, "→ modes to try:", modesToTry);
+  let lastError: Error | null = null;
+
+  for (const mode of modesToTry) {
+    console.log("[Cashfree] trying mode:", mode);
+    const cashfree = window.Cashfree({ mode });
+    const result = await cashfree.checkout({
+      paymentSessionId: sessionId,
+      redirectTarget: "_self",
+      returnUrl,
+    });
+
+    console.log("[Cashfree] result for mode", mode, ":", result);
+
+    if (!result.error?.message) {
+      return { ...result, mode, paymentSessionId: sessionId };
+    }
+
+    const message = result.error.message;
+    if (!isCashfreeSessionInvalidError(message, result.error.code)) {
+      throw new Error(message);
+    }
+
+    lastError = new Error(message);
   }
 
-  const mode = resolveCashfreeMode(gatewayState);
-  const cashfree = window.Cashfree({ mode });
-  const result = await cashfree.checkout({
-    paymentSessionId: cleanedSessionId,
-    redirectTarget: "_self",
-    returnUrl,
-  });
-
-  if (result.error?.message) {
-    throw new Error(result.error.message);
-  }
-
-  return result;
+  const primaryMode = resolveCashfreeMode(gatewayState);
+  throw (
+    lastError ??
+    new Error(
+      `Cashfree rejected the payment session in ${primaryMode} mode. ` +
+        "Tap Start over, remove the cart, and checkout again.",
+    )
+  );
 };

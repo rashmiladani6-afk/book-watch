@@ -35,6 +35,7 @@ interface ImportMetaEnv {
   readonly VITE_GARBATOWN_PAYMENT_GATEWAY_URL?: string;
   readonly VITE_GARBATOWN_CREATE_ORDER_URL?: string;
   readonly VITE_GARBATOWN_VERIFY_PAYMENT_URL?: string;
+  readonly VITE_CASHFREE_MODE?: string;
 }
 
 interface ImportMeta {

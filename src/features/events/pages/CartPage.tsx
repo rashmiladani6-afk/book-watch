@@ -19,6 +19,7 @@ import { getAuthUrl } from "@/lib/auth/authRedirect";
 import { eventTicketToCartTicket, mapCartTicketToEventTicket } from "@/features/events/types/eventTickets";
 import { executeTicketCheckout, type CartTicketNavigationState } from "@/features/events/utils/ticketCheckout";
 import { useCreateOrder } from "@/features/payment/hooks/useCheckout";
+import { clearPendingEventPaymentForEvent } from "@/features/payment/utils/paymentStorage";
 import { toast } from "sonner";
 import { ShoppingCart, Ticket, ArrowRight } from "lucide-react";
 
@@ -176,6 +177,7 @@ const CartPage = () => {
       await queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
       setApiQuantities({});
       setNavTickets([]);
+      clearPendingEventPaymentForEvent(apiEvent.id);
       toast.success("Event removed from cart");
     } catch {
       toast.error("Could not remove event. Please try again.");
@@ -187,6 +189,7 @@ const CartPage = () => {
   const handleRemoveLocalEvent = (eventId: number) => {
     setRemovingEventId(eventId);
     removeEvent(eventId);
+    clearPendingEventPaymentForEvent(eventId);
     toast.success("Event removed from cart");
     setRemovingEventId(null);
   };

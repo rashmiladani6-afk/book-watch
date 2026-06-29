@@ -17,8 +17,14 @@ export const useCreateOrder = (
   return useMutation({
     mutationFn: (data: CreateOrderRequest) => paymentService.createOrder(data, userToken),
     onSuccess: (result) => {
-      if (result.status !== "success" || !result.data?.order_id) {
-        options?.onError?.(result.message || "Could not create order. Please try again.");
+      if (
+        result.status !== "success" ||
+        !result.data?.order_id ||
+        !result.data?.payment_session_id
+      ) {
+        options?.onError?.(
+          result.message || "Could not create order. Please try again.",
+        );
         return;
       }
       options?.onSuccess?.(result.message);

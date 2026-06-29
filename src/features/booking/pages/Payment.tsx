@@ -9,8 +9,9 @@ import { CreditCard, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useVerifyPayment } from '@/features/payment/hooks/useVerifyPayment';
 import { isEventPaymentState, type EventPaymentState } from '@/features/payment/types/payment';
-import { paymentService } from '@/features/payment/services/paymentService';
+import { cartService } from '@/features/events/services/cartService';
 import { openCashfreeCheckout } from '@/features/payment/utils/cashfreeCheckout';
+import { isValidPaymentSessionId } from '@/features/payment/utils/paymentSession';
 import {
   clearPendingEventPayment,
   getPendingEventPayment,
@@ -27,7 +28,7 @@ const Payment = () => {
   const { user, session } = useAuth();
   const [processing, setProcessing] = useState(false);
   const [openingCashfree, setOpeningCashfree] = useState(false);
-  const [refreshingOrder, setRefreshingOrder] = useState(false);
+  const [restartingCheckout, setRestartingCheckout] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [cashfreeCompleted, setCashfreeCompleted] = useState(false);
@@ -89,54 +90,27 @@ const Payment = () => {
     );
   }
 
-  const handleRefreshOrder = async () => {
-    if (!activePayment) return;
+  const handleStartOver = async () => {
     if (!userToken) {
-      toast.error('Sign in to refresh payment');
-      navigate(getAuthUrl(`${ROUTES.PAYMENT}?order_id=${activePayment.orderId}`));
+      toast.error('Sign in to restart checkout');
+      navigate(getAuthUrl(ROUTES.CART));
       return;
     }
 
-    setRefreshingOrder(true);
+    setRestartingCheckout(true);
     try {
-      const gatewayResult = await paymentService.getPaymentGateway(userToken);
-      const gateway = gatewayResult.status === 'success' ? gatewayResult.data : null;
-      if (!gateway?.id) {
-        toast.error(gatewayResult.message || 'Payment gateway unavailable');
-        return;
-      }
-
-      const orderResult = await paymentService.createOrder(
-        {
-          eventId: activePayment.eventId,
-          ticketId: activePayment.ticketId,
-          qty: activePayment.qty,
-          paymentProviderId: gateway.id,
-        },
-        userToken,
-      );
-
-      if (orderResult.status !== 'success' || !orderResult.data?.order_id) {
-        toast.error(orderResult.message || 'Could not refresh order');
-        return;
-      }
-
-      const updated = normalizeEventPaymentState({
-        ...activePayment,
-        orderId: orderResult.data.order_id,
-        paymentSessionId: orderResult.data.payment_session_id,
-        paymentProviderId: gateway.id,
-        paymentProviderName: gateway.name,
-        gatewayState: gateway.state,
-      });
-
-      setPaymentState(updated);
-      savePendingEventPayment(updated);
-      toast.success('Payment order refreshed. Try Pay with Cashfree again.');
+      await cartService.removeCart(userToken);
+      clearPendingEventPayment();
+      setPaymentState(null);
+      toast.success('Cart reset. Add tickets and try checkout again.');
+      navigate(ROUTES.CART);
     } catch {
-      toast.error('Could not refresh order. Please go back to cart and try again.');
+      clearPendingEventPayment();
+      setPaymentState(null);
+      toast.info('Payment state cleared. Remove the event from cart and try again.');
+      navigate(ROUTES.CART);
     } finally {
-      setRefreshingOrder(false);
+      setRestartingCheckout(false);
     }
   };
 
@@ -169,8 +143,8 @@ const Payment = () => {
   };
 
   const handleOpenCashfree = async () => {
-    if (!activePayment?.paymentSessionId) {
-      toast.error('Payment session is missing. Tap Refresh order or go back to cart.');
+    if (!activePayment?.paymentSessionId || !isValidPaymentSessionId(activePayment.paymentSessionId)) {
+      toast.error('Payment session from server is invalid. Tap Start over and try checkout again.');
       return;
     }
     if (!userToken) {
@@ -192,8 +166,8 @@ const Payment = () => {
       const message =
         (err as Error)?.message || 'Could not open Cashfree checkout. Please try again.';
       toast.error(message);
-      if (message.toLowerCase().includes('session')) {
-        toast.info('Tap Refresh order to get a new payment session.');
+      if (message.toLowerCase().includes('session') || message.toLowerCase().includes('invalid')) {
+        toast.info('Tap Start over, then add tickets and checkout again.');
       }
     } finally {
       setOpeningCashfree(false);
@@ -248,6 +222,7 @@ const Payment = () => {
   if (activePayment) {
     const summary = activePayment.summary;
     const needsSignIn = !user || !userToken;
+    const hasValidSession = isValidPaymentSessionId(activePayment.paymentSessionId);
 
     return (
       <div className="min-h-screen bg-background">
@@ -325,12 +300,21 @@ const Payment = () => {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Step 1: Tap <strong>Pay with Cashfree</strong> and complete payment in the
-                    Cashfree test checkout.
+                    Cashfree checkout.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Gateway state: {activePayment.gatewayState ?? 'test'} (sandbox/production auto-detected)
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Step 2: After payment succeeds, return here and tap{' '}
                     <strong>Verify Payment</strong>.
                   </p>
+                  {!hasValidSession && !needsSignIn && (
+                    <p className="text-xs text-amber-700">
+                      Payment session from server is invalid or expired. Tap{' '}
+                      <strong>Start over</strong> to clear the cart and checkout again.
+                    </p>
+                  )}
                   {cashfreeCompleted && (
                     <p className="text-xs font-medium text-[#955F3B]">
                       Payment window completed. You can verify now.
@@ -344,14 +328,14 @@ const Payment = () => {
                   <Button
                     variant="outline"
                     onClick={() => navigate(-1)}
-                    disabled={openingCashfree || verifyPayment.isPending || refreshingOrder}
+                    disabled={openingCashfree || verifyPayment.isPending || restartingCheckout}
                     className="flex-1"
                   >
                     Back
                   </Button>
                   <Button
                     onClick={handleOpenCashfree}
-                    disabled={openingCashfree || !activePayment.paymentSessionId || needsSignIn}
+                    disabled={openingCashfree || !hasValidSession || needsSignIn}
                     className="flex-1 bg-[#955F3B] hover:bg-[#7a4d30]"
                   >
                     {openingCashfree ? 'Opening Cashfree...' : 'Pay with Cashfree'}
@@ -367,11 +351,11 @@ const Payment = () => {
                 </div>
                 <Button
                   variant="ghost"
-                  onClick={handleRefreshOrder}
-                  disabled={refreshingOrder || needsSignIn}
+                  onClick={handleStartOver}
+                  disabled={restartingCheckout || needsSignIn}
                   className="w-full text-sm"
                 >
-                  {refreshingOrder ? 'Refreshing order...' : 'Refresh order (new payment session)'}
+                  {restartingCheckout ? 'Resetting checkout...' : 'Start over (clear cart & retry)'}
                 </Button>
               </div>
             </CardContent>

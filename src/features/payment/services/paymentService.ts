@@ -4,7 +4,16 @@ import {
   extractGarbaApiMessage,
   normalizeUserToken,
 } from "@/lib/garba/apiAuth";
-import { sanitizePaymentSessionId } from "@/features/payment/utils/paymentSession";
+import {
+  findPaymentSessionInPayload,
+  isValidPaymentSessionId,
+} from "@/features/payment/utils/paymentSession";
+import {
+  extractCreateOrderErrorCode,
+  extractCreateOrderErrorMessage,
+  extractCreateOrderId,
+  isOrderAlreadyExistsError,
+} from "@/features/payment/utils/paymentOrderErrors";
 
 const GARBA_PROXY_BASE = "/garba-auth";
 const PAYMENT_GATEWAY_URL =
@@ -93,6 +102,7 @@ export interface CreateOrderData {
 export interface CreateOrderResponse {
   status: string;
   message?: string;
+  code?: string;
   data?: CreateOrderData;
 }
 
@@ -111,6 +121,41 @@ export interface VerifyPaymentResponse {
   message?: string;
   data?: VerifyPaymentData;
 }
+
+const normalizeCreateOrderResponse = (body: unknown): CreateOrderResponse => {
+  const record =
+    body && typeof body === "object" ? (body as CreateOrderResponse) : ({} as CreateOrderResponse);
+
+  const existingData =
+    record.data && typeof record.data === "object" ? record.data : ({} as CreateOrderData);
+
+  const orderId = extractCreateOrderId(body) ?? existingData.order_id;
+  const paymentSessionId = findPaymentSessionInPayload(body);
+
+  return {
+    ...record,
+    data: {
+      ...existingData,
+      order_id: orderId,
+      payment_session_id: paymentSessionId,
+    },
+  };
+};
+
+const buildCreateOrderSuccess = (body: unknown): CreateOrderResponse | null => {
+  const normalized = normalizeCreateOrderResponse(body);
+  const orderId = normalized.data?.order_id;
+  const paymentSessionId = normalized.data?.payment_session_id;
+
+  if (!orderId || !paymentSessionId || !isValidPaymentSessionId(paymentSessionId)) {
+    return null;
+  }
+
+  return {
+    ...normalized,
+    status: "success",
+  };
+};
 
 export const paymentService = {
   async getPaymentGateway(userToken?: string | null): Promise<PaymentGatewayResponse> {
@@ -143,13 +188,53 @@ export const paymentService = {
         );
 
         if (response.data && typeof response.data === "object") {
-          const body = response.data as CreateOrderResponse;
-          if (body.data?.payment_session_id) {
-            body.data.payment_session_id = sanitizePaymentSessionId(
-              body.data.payment_session_id,
-            );
+          console.log("[createOrder] raw API response:", JSON.stringify(response.data));
+          const rawBody = response.data as CreateOrderResponse;
+          const errorMessage = extractCreateOrderErrorMessage(rawBody);
+          const errorCode = extractCreateOrderErrorCode(rawBody);
+          const duplicateOrder = isOrderAlreadyExistsError(rawBody, errorMessage);
+
+          if (duplicateOrder) {
+            const recovered = buildCreateOrderSuccess(rawBody);
+            if (recovered) {
+              return recovered;
+            }
           }
-          return body;
+
+          if (response.status >= 400 || rawBody.status === "error" || duplicateOrder) {
+            return {
+              status: "error",
+              code: errorCode,
+              message:
+                errorMessage ||
+                (duplicateOrder
+                  ? "A payment order already exists. Tap Start over on the payment page or remove the cart and try again."
+                  : `Create order failed (${response.status})`),
+            };
+          }
+
+          const body = normalizeCreateOrderResponse(rawBody);
+
+          if (!body.data?.order_id) {
+            return {
+              status: "error",
+              message: body.message || "Create order did not return an order id",
+            };
+          }
+
+          if (!body.data.payment_session_id) {
+            return {
+              status: "error",
+              message:
+                body.message ||
+                "Order was created but Cashfree payment session is invalid. Tap Start over and try checkout again.",
+            };
+          }
+
+          return {
+            ...body,
+            status: "success",
+          };
         }
 
         return {

@@ -1,14 +1,11 @@
 import type { EventPaymentState } from "@/features/payment/types/payment";
-import { sanitizePaymentSessionId } from "@/features/payment/utils/paymentSession";
 
 const PENDING_PAYMENT_KEY = "pendingEventPayment";
 
 export const normalizeEventPaymentState = (state: EventPaymentState): EventPaymentState => ({
   ...state,
   gatewayState: state.gatewayState ?? "test",
-  paymentSessionId: state.paymentSessionId
-    ? sanitizePaymentSessionId(state.paymentSessionId)
-    : undefined,
+  paymentSessionId: state.paymentSessionId?.trim() || undefined,
 });
 
 export const savePendingEventPayment = (state: EventPaymentState) => {
@@ -31,4 +28,11 @@ export const getPendingEventPayment = (): EventPaymentState | null => {
 
 export const clearPendingEventPayment = () => {
   sessionStorage.removeItem(PENDING_PAYMENT_KEY);
+};
+
+export const clearPendingEventPaymentForEvent = (eventId: number) => {
+  const pending = getPendingEventPayment();
+  if (pending?.eventId === eventId) {
+    clearPendingEventPayment();
+  }
 };
